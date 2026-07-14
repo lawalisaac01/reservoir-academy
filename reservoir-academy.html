@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STRATA — The Reservoir Engineering Academy</title>
+<style>
+:root{
+  --ink:#0A1120;          /* subsurface night */
+  --rock:#111B2C;         /* panel shale */
+  --rock2:#16233A;        /* raised panel */
+  --line:#24354F;         /* hairline */
+  --text:#E9EEF6;         /* light text */
+  --dim:#9AA9BF;          /* muted text */
+  --oil:#F2A93B;          /* crude amber accent */
+  --oil-deep:#C77E1E;
+  --aqua:#57AECB;         /* aquifer blue */
+  --gas:#8FD0B8;          /* solution-gas green */
+  --bad:#E4756B;
+  --sand:#E5D8BC;
+  --r:12px;
+  --display: "Palatino Linotype", Palatino, "Iowan Old Style", Georgia, serif;
+  --body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+button{font-family:var(--body);cursor:pointer}
+a{color:var(--aqua)}
+::selection{background:rgba(242,169,59,.35)}
+
+/* ---------- App frame ---------- */
+#app{display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+header.topbar{grid-column:1/-1;position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 20px;background:rgba(10,17,32,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:10px;cursor:pointer}
+.brand .word{font-family:var(--display);font-size:22px;letter-spacing:.14em;color:var(--sand)}
+.brand .sub{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.topbar .spacer{flex:1}
+.progress-pill{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--dim)}
+.progress-pill .bar{width:140px;height:6px;border-radius:3px;background:var(--rock2);overflow:hidden}
+.progress-pill .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--oil-deep),var(--oil));width:0%}
+#menuBtn{display:none;background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;font-size:14px}
+
+/* ---------- Strat-column sidebar (signature) ---------- */
+nav.strata{border-right:1px solid var(--line);background:linear-gradient(180deg,#0C1424,#0A1120);
+  padding:18px 0 40px;position:sticky;top:53px;height:calc(100vh - 53px);overflow-y:auto}
+nav.strata .colhead{padding:0 18px 10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.stratum{display:flex;align-items:stretch;gap:0;cursor:pointer;position:relative;border:none;background:none;width:100%;text-align:left;color:var(--text)}
+.stratum .pipe{width:34px;position:relative;flex:none}
+.stratum .pipe::before{content:"";position:absolute;left:16px;top:0;bottom:0;width:2px;background:var(--line)}
+.stratum .pipe .node{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;
+  background:var(--ink);border:2px solid var(--line)}
+.stratum.done .pipe .node{background:var(--oil);border-color:var(--oil)}
+.stratum.current .pipe .node{border-color:var(--oil);box-shadow:0 0 0 4px rgba(242,169,59,.18)}
+.stratum .layer{flex:1;padding:11px 14px 11px 6px;border-bottom:1px solid rgba(36,53,79,.55)}
+.stratum:hover .layer{background:rgba(36,53,79,.35)}
+.stratum.current .layer{background:rgba(242,169,59,.08)}
+.stratum .lt{font-size:13.5px;font-weight:600;line-height:1.3}
+.stratum .ld{font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:2px;display:flex;justify-content:space-between;gap:8px}
+.stratum .ld .pct{color:var(--oil)}
+#drillDepth{padding:14px 18px 0;font-size:11px;color:var(--dim);font-family:var(--mono)}
+#drillDepth b{color:var(--oil);font-weight:600}
+
+/* ---------- Main ---------- */
+main{padding:34px clamp(18px,4vw,56px) 90px;max-width:1020px;width:100%}
+.crumb{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.crumb span{color:var(--oil)}
+h1.pagetitle{font-family:var(--display);font-size:clamp(28px,4vw,40px);line-height:1.15;color:var(--sand);font-weight:400;margin-bottom:8px}
+.lede{color:var(--dim);font-size:17px;max-width:64ch;margin-bottom:26px}
+
+/* hero */
+.hero{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:30px;
+  background:
+   linear-gradient(180deg, rgba(10,17,32,0) 0%, rgba(10,17,32,.55) 100%),
+   repeating-linear-gradient(180deg,#1A2740 0 26px,#152238 26px 44px,#1E2A3C 44px 78px,#121E33 78px 110px);
+  padding:clamp(26px,5vw,54px)}
+.hero h1{font-family:var(--display);font-weight:400;color:var(--sand);font-size:clamp(30px,5vw,52px);line-height:1.08;max-width:18ch}
+.hero p{margin-top:14px;max-width:60ch;color:#C7D2E4}
+.hero .cta{margin-top:22px;display:flex;gap:12px;flex-wrap:wrap}
+.btn{border-radius:10px;padding:11px 20px;font-size:14.5px;font-weight:600;border:1px solid var(--line);background:var(--rock2);color:var(--text)}
+.btn.primary{background:linear-gradient(180deg,var(--oil),var(--oil-deep));border-color:var(--oil-deep);color:#201502}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn:hover{border-color:var(--oil)}
+.btn:focus-visible,.stratum:focus-visible,.opt:focus-visible{outline:2px solid var(--oil);outline-offset:2px}
+
+/* module cards on home */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--rock);padding:18px;cursor:pointer;transition:transform .12s ease,border-color .12s ease}
+.card:hover{transform:translateY(-2px);border-color:var(--oil)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--dim);display:flex;justify-content:space-between}
+.card h3{font-family:var(--display);font-weight:400;font-size:19px;margin:6px 0 6px;color:var(--sand)}
+.card p{font-size:13.5px;color:var(--dim)}
+.card .meter{margin-top:12px;height:4px;border-radius:2px;background:var(--rock2);overflow:hidden}
+.card .meter i{display:block;height:100%;background:var(--oil);width:0}
+
+/* lesson list */
+.lesson-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.lrow{display:flex;align-items:center;gap:14px;border:1px solid var(--line);background:var(--rock);border-radius:10px;padding:14px 16px;cursor:pointer}
+.lrow:hover{border-color:var(--oil)}
+.lrow .idx{font-family:var(--mono);color:var(--dim);font-size:12px;width:38px;flex:none}
+.lrow .t{flex:1;font-weight:600;font-size:15px}
+.lrow .tag{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);background:var(--gas);border-radius:20px;padding:2px 10px}
+.lrow .tag.quiz{background:var(--aqua)}
+.lrow .tag.lab{background:var(--oil)}
+.lrow .tick{color:var(--oil);font-size:16px;width:20px;text-align:center}
+
+/* ---------- Lesson content ---------- */
+article.lesson{max-width:760px}
+article.lesson h3{font-family:var(--display);font-weight:400;color:var(--sand);font-size:24px;margin:34px 0 10px;padding-top:10px;border-top:1px solid var(--line)}
+article.lesson h3:first-child{margin-top:6px;border-top:none;padding-top:0}
+article.lesson p{margin:12px 0;color:#D6DEEC}
+article.lesson ul,article.lesson ol{margin:12px 0 12px 22px;color:#D6DEEC}
+article.lesson li{margin:6px 0}
+.keyterm{color:var(--oil);font-weight:600}
+em{color:#EDE3CB}
+.fx{font-family:var(--mono);font-size:16px;background:var(--rock2);border:1px solid var(--line);border-left:3px solid var(--oil);
+  border-radius:8px;padding:14px 18px;margin:16px 0;overflow-x:auto;white-space:nowrap;color:#F4E9D0}
+.fx .lbl{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:6px;white-space:normal;font-family:var(--body)}
+.fx sub,.fx sup{font-size:11px}
+.frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:middle;margin:0 3px}
+.frac>span{padding:0 6px}
+.frac>span:first-child{border-bottom:1px solid #F4E9D0}
+.vars{font-size:13.5px;color:var(--dim);border-left:2px solid var(--line);padding:4px 0 4px 14px;margin:10px 0 18px}
+.vars b{color:var(--text);font-family:var(--mono);font-weight:600}
+.callout{border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:18px 0;background:linear-gradient(180deg,rgba(87,174,203,.08),rgba(87,174,203,.02))}
+.callout.oil{background:linear-gradient(180deg,rgba(242,169,59,.09),rgba(242,169,59,.02))}
+.callout .ct{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--aqua);margin-bottom:6px}
+.callout.oil .ct{color:var(--oil)}
+.callout p{margin:4px 0;font-size:14.5px}
+.example{border:1px solid var(--line);border-radius:var(--r);margin:20px 0;overflow:hidden}
+.example .xh{background:var(--rock2);padding:11px 18px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--sand)}
+.example .xb{padding:14px 18px}
+.example .xb p{font-size:15px}
+details.step{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--rock)}
+details.step summary{padding:10px 14px;cursor:pointer;font-weight:600;font-size:14px;color:var(--aqua);list-style:none}
+details.step summary::before{content:"▸ ";color:var(--oil)}
+details.step[open] summary::before{content:"▾ "}
+details.step .sb{padding:2px 16px 14px;font-size:14.5px}
+table.data{border-collapse:collapse;margin:14px 0;font-family:var(--mono);font-size:13px;width:auto}
+table.data th,table.data td{border:1px solid var(--line);padding:7px 12px;text-align:right}
+table.data th{background:var(--rock2);color:var(--sand);font-weight:600;text-align:center}
+table.data td:first-child{text-align:left}
+
+/* ---------- Interactive labs ---------- */
+.lab{border:1px solid var(--oil-deep);border-radius:var(--r);margin:24px 0;background:var(--rock);overflow:hidden}
+.lab .lh{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,rgba(242,169,59,.16),transparent);padding:12px 18px;border-bottom:1px solid var(--line)}
+.lab .lh .dot{width:8px;height:8px;border-radius:50%;background:var(--oil);box-shadow:0 0 8px var(--oil)}
+.lab .lh b{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--sand)}
+.lab .body{padding:16px 18px;display:grid;gap:16px}
+.lab canvas{width:100%;height:auto;background:#0C1526;border:1px solid var(--line);border-radius:8px;display:block}
+.ctrl{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px 18px}
+.ctrl label{font-size:12.5px;color:var(--dim);display:block}
+.ctrl label b{color:var(--text);font-family:var(--mono);font-weight:600}
+.ctrl input[type=range]{width:100%;accent-color:var(--oil)}
+.ctrl input[type=number]{width:100%;background:var(--ink);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-family:var(--mono);font-size:14px}
+.readout{display:flex;flex-wrap:wrap;gap:10px}
+.readout .chip{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-family:var(--mono);font-size:13px}
+.readout .chip b{color:var(--oil);font-size:15px}
+.readout .chip span{color:var(--dim);font-size:11px;display:block}
+
+/* ---------- Quiz ---------- */
+.quiz{margin-top:10px}
+.q{border:1px solid var(--line);border-radius:var(--r);background:var(--rock);padding:18px;margin:14px 0}
+.q .qt{font-weight:600;margin-bottom:12px}
+.opt{display:block;width:100%;text-align:left;background:var(--ink);border:1px solid var(--line);color:var(--text);
+  border-radius:8px;padding:10px 14px;margin:7px 0;font-size:14.5px}
+.opt:hover{border-color:var(--aqua)}
+.opt.correct{border-color:var(--gas);background:rgba(143,208,184,.12)}
+.opt.wrong{border-color:var(--bad);background:rgba(228,117,107,.10)}
+.why{display:none;font-size:13.5px;color:var(--dim);border-left:2px solid var(--gas);padding-left:12px;margin-top:10px}
+.q.answered .why{display:block}
+.quiz-score{border:1px solid var(--oil-deep);border-radius:var(--r);padding:18px;margin-top:18px;background:rgba(242,169,59,.06);display:none}
+.quiz-score b{color:var(--oil);font-size:20px;font-family:var(--mono)}
+
+/* nav footer */
+.lesson-nav{display:flex;justify-content:space-between;gap:12px;margin-top:44px;border-top:1px solid var(--line);padding-top:20px;max-width:760px}
+.lesson-nav .btn{max-width:48%}
+.done-btn{margin-top:30px}
+
+@media (max-width:900px){
+  #app{grid-template-columns:1fr}
+  nav.strata{position:fixed;left:0;top:53px;bottom:0;width:290px;transform:translateX(-100%);transition:transform .2s ease;z-index:40;box-shadow:0 0 40px rgba(0,0,0,.5)}
+  nav.strata.open{transform:none}
+  #menuBtn{display:block}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <button id="menuBtn" aria-label="Open course menu">☰ Course</button>
+    <div class="brand" onclick="go('home')" tabindex="0" role="button" aria-label="Go home">
+      <span class="word">STRATA</span><span class="sub">Reservoir Engineering Academy</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="progress-pill"><span id="pctTxt">0%</span><div class="bar"><i id="pctBar"></i></div></div>
+  </header>
+  <nav class="strata" id="sidebar" aria-label="Course modules">
+    <div class="colhead">Stratigraphic column · drill down as you learn</div>
+    <div id="navList"></div>
+    <div id="drillDepth"></div>
+  </nav>
+  <main id="main" tabindex="-1"></main>
+</div>
+<script>
+"use strict";
+const COURSE = [];
+</script>
+<script>
+/* =================== MODULES 1–3 =================== */
+COURSE.push({
+id:"m1", num:"01", title:"Orientation: The Reservoir Engineer's World", depth:"0 – 250 m",
+tag:"Foundations",
+blurb:"What the discipline is, the recovery ladder, reservoir types, and the natural energies that push hydrocarbons to your wells.",
+lessons:[
+{title:"The job: managing a tank you will never see", type:"read", html:`
+<h3>A tank buried under kilometres of rock</h3>
+<p>A petroleum reservoir is a body of porous, permeable rock — sandstone or carbonate — whose microscopic pore spaces hold oil, gas and water under enormous pressure, sealed beneath an impermeable cap rock. You will never see it. Every decision you make about it is inferred from <span class="keyterm">pressure measurements</span>, <span class="keyterm">rock and fluid samples</span>, <span class="keyterm">production data</span> and <span class="keyterm">well logs</span>.</p>
+<p><span class="keyterm">Reservoir engineering</span> is the art of using physics, chemistry, mathematics and economics to answer three questions:</p>
+<ol>
+<li><em>How much hydrocarbon is there?</em> — volumetric estimation, material balance.</li>
+<li><em>How fast can it be produced?</em> — fluid flow, well deliverability, well testing.</li>
+<li><em>How much can ultimately be recovered, and how do we maximise it?</em> — drive mechanisms, decline analysis, performance prediction, secondary and enhanced recovery.</li>
+</ol>
+<div class="callout oil"><div class="ct">Why it matters</div><p>Primary recovery alone typically leaves 70–90% of the oil behind. The difference between a well-managed and a poorly managed reservoir is measured in hundreds of millions of barrels. Reservoir engineering is the discipline of not leaving them behind carelessly.</p></div>
+<h3>The recovery ladder</h3>
+<ul>
+<li><b>Primary recovery</b> — production using only the reservoir's natural energy (fluid and rock expansion, solution gas, gas cap, aquifer water, gravity). Typical recovery: 5–30% of oil in place.</li>
+<li><b>Secondary recovery</b> — energy is added by injecting water or gas to maintain pressure and sweep oil. Adds roughly 10–20%.</li>
+<li><b>Tertiary / Enhanced Oil Recovery (EOR)</b> — the physics of displacement itself is altered: thermal (steam), chemical (polymer, surfactant), miscible gas (CO₂), microbial.</li>
+</ul>
+<h3>The data you live on</h3>
+<p>Everything in this academy rests on four data streams: <b>core analysis</b> (porosity, permeability, saturations, capillary pressure), <b>PVT laboratory analysis</b> (how fluids expand, shrink and release gas), <b>well tests</b> (pressure vs. time → permeability, skin, boundaries), and <b>production history</b> (rates and pressures → material balance, decline curves). Each module of this course teaches you to turn one of these streams into decisions.</p>
+`},
+{title:"Reservoir types & natural drive mechanisms", type:"read", html:`
+<h3>Classifying reservoirs by initial pressure</h3>
+<p>Compare the initial reservoir pressure p<sub>i</sub> with the fluid's <span class="keyterm">bubble-point pressure</span> p<sub>b</sub> (the pressure at which the first bubble of gas comes out of solution):</p>
+<ul>
+<li><b>Undersaturated oil reservoir</b>: p<sub>i</sub> &gt; p<sub>b</sub>. All gas remains dissolved; the reservoir is single-phase liquid.</li>
+<li><b>Saturated oil reservoir</b>: p<sub>i</sub> ≤ p<sub>b</sub>. Free gas exists — if it has segregated upward, the reservoir has a <span class="keyterm">gas cap</span>.</li>
+<li><b>Gas reservoirs</b>: dry gas, wet gas, or retrograde gas-condensate (Module 4 explains these with the phase diagram).</li>
+</ul>
+<h3>The six natural drive mechanisms</h3>
+<p>A reservoir produces because <em>something expands</em> as pressure falls. That something defines the drive mechanism, and the drive mechanism defines the recovery factor.</p>
+<table class="data"><tr><th>Drive</th><th>Energy source</th><th>Pressure behaviour</th><th>GOR behaviour</th><th>Typical RF (oil)</th></tr>
+<tr><td>Rock &amp; liquid expansion</td><td>Compressibility of oil, water, pores (above p<sub>b</sub>)</td><td>Declines rapidly</td><td>Constant (= R<sub>si</sub>)</td><td>1–5%</td></tr>
+<tr><td>Solution-gas (depletion) drive</td><td>Gas liberated from oil below p<sub>b</sub></td><td>Declines rapidly &amp; continuously</td><td>Rises to a peak, then falls</td><td>5–30%</td></tr>
+<tr><td>Gas-cap drive</td><td>Expansion of free gas cap</td><td>Falls slowly, steadily</td><td>Rises continuously in up-dip wells</td><td>20–40%</td></tr>
+<tr><td>Water drive</td><td>Aquifer expansion &amp; influx</td><td>Remains high</td><td>Nearly constant</td><td>35–75%</td></tr>
+<tr><td>Gravity drainage</td><td>Density segregation in steep, thick, permeable sands</td><td>Varies</td><td>Low in down-dip wells</td><td>up to 60–80%</td></tr>
+<tr><td>Combination</td><td>Two or more of the above</td><td>Intermediate</td><td>Intermediate</td><td>varies</td></tr></table>
+<div class="callout"><div class="ct">Diagnostic instinct</div><p>Pressure history + GOR history + water cut history together fingerprint the drive mechanism. A reservoir whose pressure barely falls while water cut climbs is water-driven; one whose GOR spikes while pressure crashes is on solution-gas drive. Module 7's drive indices make this quantitative.</p></div>
+<h3>Reservoir management in one sentence</h3>
+<p>Identify the dominant energy early, then produce the field in a way that conserves and supplements that energy — e.g. keep pressure above p<sub>b</sub> to avoid wasteful free-gas mobility, shut in high-GOR up-dip wells in gas-cap drive, balance offtake against aquifer strength in water drive.</p>
+`},
+{title:"Checkpoint · Module 1", type:"quiz", quiz:[
+{q:"A reservoir's initial pressure is 4,200 psia and its bubble-point is 2,900 psia. The reservoir is…",opts:["Saturated, with a gas cap","Undersaturated single-phase oil","A retrograde condensate","At its dew point"],a:1,why:"p_i > p_b means all gas is still in solution — an undersaturated oil reservoir."},
+{q:"Which drive mechanism typically gives the highest primary recovery factor?",opts:["Rock & liquid expansion","Solution-gas drive","Strong water drive","None — all are equal"],a:2,why:"Aquifer influx maintains pressure and sweeps oil: 35–75% RF, versus 1–5% for pure expansion drive."},
+{q:"In a solution-gas drive reservoir, the producing GOR typically…",opts:["Stays constant for the whole life","Falls continuously","Rises to a maximum then declines","Equals zero below bubble point"],a:2,why:"Below p_b free gas becomes mobile and GOR climbs; late in life the depleted reservoir has little gas left to expand, so GOR falls."},
+{q:"Secondary recovery is best described as…",opts:["Producing with natural energy only","Injecting water or gas to add reservoir energy","Changing the displacement physics with chemicals or heat","Drilling infill wells"],a:1,why:"Secondary recovery supplements natural energy by injection; EOR (tertiary) changes the displacement physics itself."},
+{q:"The strongest early fingerprint of a water-drive reservoir is…",opts:["Rapidly crashing pressure and spiking GOR","Nearly flat pressure with rising water cut","Constant GOR and constant water cut forever","Very high initial GOR"],a:1,why:"Aquifer support holds pressure nearly constant while the advancing water raises water cut."}
+]}
+]});
+
+COURSE.push({
+id:"m2", num:"02", title:"Pressure Regimes & Fluid Contacts", depth:"250 – 600 m",
+tag:"Foundations",
+blurb:"Hydrostatic gradients, overpressure, and how a handful of RFT pressure points pins down the gas–oil and oil–water contacts.",
+lessons:[
+{title:"Pressure gradients and abnormal pressure", type:"read", html:`
+<h3>The hydrostatic backbone</h3>
+<p>In a normally pressured basin, pore pressure at any depth equals the weight of a continuous column of formation water from surface:</p>
+<div class="fx"><span class="lbl">Hydrostatic pore pressure</span>p = G<sub>w</sub> · D + 14.7 &nbsp;&nbsp;(psia)</div>
+<div class="vars"><b>G<sub>w</sub></b> ≈ 0.433 psi/ft for fresh water, ≈ <b>0.465 psi/ft</b> for typical saline formation water · <b>D</b> = depth, ft</div>
+<p>Each fluid, being of different density, imposes its own gradient inside the reservoir:</p>
+<table class="data"><tr><th>Fluid</th><th>Typical gradient (psi/ft)</th></tr>
+<tr><td>Formation water</td><td>0.45 – 0.50</td></tr>
+<tr><td>Oil</td><td>0.30 – 0.40 (≈0.35)</td></tr>
+<tr><td>Gas</td><td>0.05 – 0.12 (≈0.08)</td></tr></table>
+<h3>Overpressure and underpressure</h3>
+<p>If the pore fluid is sealed and cannot communicate with surface — rapid burial with no dewatering, uplift, charged by deeper zones — pressure departs from hydrostatic. We write:</p>
+<div class="fx">p = 0.465 · D + 14.7 + C</div>
+<p>where <b>C</b> &gt; 0 indicates <span class="keyterm">overpressure</span> (drilling hazard: kicks, blowouts) and <b>C</b> &lt; 0 <span class="keyterm">underpressure</span> (lost-circulation risk). The <span class="keyterm">overburden gradient</span> (total rock + fluid weight) is ≈ 1 psi/ft; pore pressure plus grain-to-grain stress must always carry the overburden.</p>
+<div class="callout"><div class="ct">Field habit</div><p>Always convert gauge readings to a common <em>datum depth</em> (usually mid-perforations or the initial OWC) before comparing well pressures — otherwise you are comparing apples at different elevations.</p></div>
+`},
+{title:"Locating fluid contacts from pressure surveys", type:"read", html:`
+<h3>Straight lines that find contacts</h3>
+<p>Run a formation tester (RFT/MDT) down a well: in the gas leg the points fall on a line of slope ≈0.08 psi/ft, in the oil leg ≈0.35 psi/ft, in the water leg ≈0.465 psi/ft. <em>Where two lines intersect is the fluid contact.</em> This is how the <span class="keyterm">gas–oil contact (GOC)</span> and <span class="keyterm">oil–water contact (OWC)</span> are fixed before a single drop is produced.</p>
+<p>Write each fluid's pressure line from a known point and equate:</p>
+<div class="fx"><span class="lbl">Contact depth from two gradient lines</span>p<sub>oil</sub>(D) = p<sub>gas</sub>(D)  →  D<sub>GOC</sub> = <span class="frac"><span>(p<sub>o,ref</sub> − G<sub>o</sub>D<sub>o,ref</sub>) − (p<sub>g,ref</sub> − G<sub>g</sub>D<sub>g,ref</sub>)</span><span>G<sub>g</sub> − G<sub>o</sub></span></span></div>
+<div class="example"><div class="xh">Worked example — where is the OWC?</div><div class="xb">
+<p>An appraisal well measures oil pressure 3,220 psia at 7,000 ft. A water-leg point in a nearby well reads 3,344 psia at 7,320 ft. G<sub>o</sub>=0.35, G<sub>w</sub>=0.465 psi/ft.</p>
+<details class="step"><summary>Step 1 — Write the two lines</summary><div class="sb">Oil: p = 3220 + 0.35(D − 7000). Water: p = 3344 + 0.465(D − 7320).</div></details>
+<details class="step"><summary>Step 2 — Equate and solve</summary><div class="sb">3220 + 0.35D − 2450 = 3344 + 0.465D − 3403.8 → 770 + 0.35D = −59.8 + 0.465D → 0.115D = 829.8 → <b>D = 7,215 ft</b>.</div></details>
+<details class="step"><summary>Step 3 — Sanity check</summary><div class="sb">7,215 ft lies below the oil point (7,000 ft) and above the water point (7,320 ft). ✓ The OWC is at ≈7,215 ft.</div></details>
+</div></div>
+<div class="lab" data-widget="contacts"><div class="lh"><span class="dot"></span><b>Lab · Contact Finder</b></div>
+<div class="body"><p style="font-size:13.5px;color:var(--dim);margin:0">Drag the gradients and reference pressures. Watch the GOC and OWC move — this is exactly the graphical construction used on RFT plots.</p>
+<div class="ctrl">
+<label>Gas gradient <b data-out="gg"></b> psi/ft<input type="range" min="0.05" max="0.12" step="0.005" value="0.08" data-in="gg"></label>
+<label>Oil gradient <b data-out="go"></b> psi/ft<input type="range" min="0.28" max="0.42" step="0.005" value="0.35" data-in="go"></label>
+<label>Water gradient <b data-out="gw"></b> psi/ft<input type="range" min="0.433" max="0.50" step="0.002" value="0.465" data-in="gw"></label>
+<label>Oil pressure @ 7,000 ft <b data-out="po"></b> psia<input type="range" min="3150" max="3300" step="5" value="3220" data-in="po"></label>
+</div>
+<canvas width="720" height="420"></canvas>
+<div class="readout"><div class="chip"><span>Gas–oil contact</span><b data-out="goc"></b></div><div class="chip"><span>Oil–water contact</span><b data-out="owc"></b></div></div>
+</div></div>
+<div class="callout oil"><div class="ct">Curiosity</div><p>A “tilted” or inconsistent contact between wells is a red flag: it may reveal <em>separate fault compartments</em>, each with its own pressure system — one of the cheapest pieces of reservoir-architecture intelligence you will ever get.</p></div>
+`},
+{title:"Checkpoint · Module 2", type:"quiz", quiz:[
+{q:"Typical pressure gradients (psi/ft) for water, oil and gas are approximately…",opts:["0.465 / 0.35 / 0.08","0.35 / 0.465 / 0.08","0.08 / 0.35 / 0.465","1.0 / 0.465 / 0.35"],a:0,why:"Denser fluids impose steeper gradients: water ≈0.465, oil ≈0.35, gas ≈0.08 psi/ft."},
+{q:"A zone at 9,000 ft reads 5,600 psia. Hydrostatic (0.465 psi/ft) predicts ≈4,200 psia. The zone is…",opts:["Normally pressured","Underpressured","Overpressured by ≈1,400 psi","Impossible to say"],a:2,why:"Measured minus hydrostatic = 5,600 − 4,200 ≈ +1,400 psi: strongly overpressured — a drilling hazard."},
+{q:"On a pressure–depth plot, the OWC is found where…",opts:["The oil line crosses zero","The oil-gradient line intersects the water-gradient line","Pressure equals overburden","The gas line becomes vertical"],a:1,why:"Each fluid defines a straight line; contacts are the intersections."},
+{q:"Two wells in the same sand show water lines offset by 300 psi at the same datum. Most likely explanation:",opts:["Instrument error is the only possibility","The sand is sealed into separate fault compartments","Gas gradient was used by mistake","The wells share one aquifer"],a:1,why:"Different pressure systems at a common datum imply no pressure communication — compartmentalisation."},
+{q:"The overburden gradient in a normally compacted basin is about…",opts:["0.465 psi/ft","0.35 psi/ft","1.0 psi/ft","3.2 psi/ft"],a:2,why:"Total rock+fluid column weighs ≈1 psi/ft; pore pressure + matrix stress = overburden."}
+]}
+]});
+
+COURSE.push({
+id:"m3", num:"03", title:"Reservoir Rock Properties", depth:"600 – 1,100 m",
+tag:"Rock physics",
+blurb:"Porosity, saturation, Darcy's law, permeability averaging, wettability, relative permeability and capillary pressure — the rock half of the story.",
+lessons:[
+{title:"Porosity, saturation & rock compressibility", type:"read", html:`
+<h3>Porosity — the storage</h3>
+<div class="fx"><span class="lbl">Porosity</span>φ = <span class="frac"><span>pore volume, V<sub>p</sub></span><span>bulk volume, V<sub>b</sub></span></span> = <span class="frac"><span>V<sub>b</sub> − V<sub>gr</sub></span><span>V<sub>b</sub></span></span></div>
+<p><span class="keyterm">Total porosity</span> counts all pores; <span class="keyterm">effective porosity</span> counts only interconnected pores — the only ones that matter for flow. <span class="keyterm">Primary</span> porosity is depositional (intergranular); <span class="keyterm">secondary</span> porosity forms afterwards (fractures, vugs, dissolution). Typical sandstones: 10–35%. Porosity is measured on core (Boyle's-law porosimeter, saturation methods) and from logs (density, neutron, sonic).</p>
+<p>Averaging across a field must be weighted by the volume each sample represents:</p>
+<div class="fx"><span class="lbl">Thickness- (and area-) weighted average</span>φ̄ = Σ(φ<sub>i</sub> h<sub>i</sub>) / Σh<sub>i</sub></div>
+<h3>Fluid saturation — who occupies the pores</h3>
+<div class="fx">S<sub>o</sub> + S<sub>w</sub> + S<sub>g</sub> = 1,&nbsp;&nbsp; S<sub>x</sub> = V<sub>x</sub>/V<sub>p</sub></div>
+<p>Even the cleanest oil zone retains <span class="keyterm">connate (irreducible) water saturation</span> S<sub>wc</sub> ≈ 10–40%, trapped by capillary forces on grain surfaces. After waterflooding, a <span class="keyterm">residual oil saturation</span> S<sub>or</sub> ≈ 20–35% is left as disconnected blobs. Movable oil is bounded by these two numbers.</p>
+<h3>Rock (pore-volume) compressibility</h3>
+<div class="fx"><span class="lbl">Formation compressibility</span>c<sub>f</sub> = <span class="frac"><span>1</span><span>V<sub>p</sub></span></span>·<span class="frac"><span>∂V<sub>p</sub></span><span>∂p</span></span> &nbsp;&nbsp;(typically 3–10 ×10<sup>−6</sup> psi<sup>−1</sup>)</div>
+<p>As pore pressure falls, the overburden squeezes pores smaller — a real drive energy, dominant above the bubble point, and central to the material balance's E<sub>f,w</sub> term (Module 7). The <b>total compressibility</b> used throughout well testing is:</p>
+<div class="fx">c<sub>t</sub> = c<sub>o</sub>S<sub>o</sub> + c<sub>w</sub>S<sub>w</sub> + c<sub>g</sub>S<sub>g</sub> + c<sub>f</sub></div>
+`},
+{title:"Permeability & Darcy's law", type:"read", html:`
+<h3>Darcy's experiment, generalised</h3>
+<p><span class="keyterm">Permeability k</span> is the rock's conductivity to fluid — a property of the rock alone (for single-phase flow). Henry Darcy (1856, water filters of Dijon) found flow rate proportional to pressure gradient and inversely proportional to viscosity:</p>
+<div class="fx"><span class="lbl">Darcy's law — linear, incompressible, horizontal</span>q = <span class="frac"><span>k A Δp</span><span>μ L</span></span>&nbsp;&nbsp;(Darcy units)&nbsp;&nbsp;→&nbsp;&nbsp;q = <span class="frac"><span>1.127×10<sup>−3</sup> k A Δp</span><span>μ L</span></span>&nbsp;(field units)</div>
+<div class="vars"><b>q</b> bbl/d · <b>k</b> md · <b>A</b> ft² · <b>Δp</b> psi · <b>μ</b> cp · <b>L</b> ft. 1 darcy = 1000 md ≈ 9.87×10<sup>−9</sup> cm².</div>
+<p>For <b>radial steady-state</b> flow into a well — the geometry of almost everything we do:</p>
+<div class="fx"><span class="lbl">Radial incompressible flow (field units)</span>q = <span class="frac"><span>0.00708 k h (p<sub>e</sub> − p<sub>wf</sub>)</span><span>μ B ln(r<sub>e</sub>/r<sub>w</sub>)</span></span></div>
+<p>For <b>compressible gas</b>, rate varies along the path; using the real-gas law and expressing rate at standard conditions gives the pressure-squared form:</p>
+<div class="fx"><span class="lbl">Radial gas flow (p² form)</span>q<sub>g</sub> = <span class="frac"><span>k h (p<sub>e</sub>² − p<sub>wf</sub>²)</span><span>1422 T z̄ μ̄ ln(r<sub>e</sub>/r<sub>w</sub>)</span></span>&nbsp;&nbsp;Mscf/d</div>
+<div class="callout"><div class="ct">Klinkenberg effect</div><p>Gas measured permeability exceeds liquid permeability at low pressure because gas molecules “slip” along pore walls. Lab gas permeabilities are corrected by plotting k<sub>g</sub> vs 1/p̄ and extrapolating to infinite pressure: k<sub>L</sub> = k<sub>g</sub>/(1 + b/p̄).</p></div>
+<div class="lab" data-widget="darcy"><div class="lh"><span class="dot"></span><b>Lab · Radial Inflow Calculator</b></div>
+<div class="body"><div class="ctrl">
+<label>k (md)<input type="number" value="120" data-in="k"></label>
+<label>h (ft)<input type="number" value="40" data-in="h"></label>
+<label>p<sub>e</sub> (psia)<input type="number" value="3600" data-in="pe"></label>
+<label>p<sub>wf</sub> (psia)<input type="number" value="2400" data-in="pwf"></label>
+<label>μ (cp)<input type="number" value="1.4" step="0.1" data-in="mu"></label>
+<label>B<sub>o</sub> (rb/stb)<input type="number" value="1.25" step="0.01" data-in="bo"></label>
+<label>r<sub>e</sub> (ft)<input type="number" value="1500" data-in="re"></label>
+<label>r<sub>w</sub> (ft)<input type="number" value="0.35" step="0.01" data-in="rw"></label>
+</div>
+<div class="readout"><div class="chip"><span>Steady-state oil rate</span><b data-out="q"></b></div><div class="chip"><span>Productivity index J</span><b data-out="j"></b></div></div>
+<p style="font-size:12.5px;color:var(--dim);margin:0">Notice the logarithm: doubling r<sub>e</sub> barely changes q, but doubling k doubles it. Half the total pressure drop occurs within a few tens of feet of the wellbore — which is why near-wellbore damage (skin) is so punishing.</p>
+</div></div>
+`},
+{title:"Averaging permeability & relative permeability", type:"read", html:`
+<h3>Averaging k — geometry decides the mean</h3>
+<p><b>Parallel beds</b> (flow along layers, same Δp): thickness-weighted <em>arithmetic</em> average —</p>
+<div class="fx">k̄ = Σ(k<sub>i</sub>h<sub>i</sub>) / Σh<sub>i</sub></div>
+<p><b>Series beds</b> (flow through layers in sequence, same q): <em>harmonic</em> average —</p>
+<div class="fx">k̄ = ΣL<sub>i</sub> / Σ(L<sub>i</sub>/k<sub>i</sub>) &nbsp;&nbsp;(radial series: k̄ = ln(r<sub>e</sub>/r<sub>w</sub>) / Σ[ln(r<sub>i</sub>/r<sub>i−1</sub>)/k<sub>i</sub>])</div>
+<p><b>Random heterogeneity</b>: the <em>geometric</em> mean k̄ = (k₁k₂…k<sub>n</sub>)<sup>1/n</sup>. Rule: harmonic ≤ geometric ≤ arithmetic. A thin tight streak in series wrecks flow; in parallel it is barely noticed.</p>
+<h3>When two fluids share the pores</h3>
+<p>Each phase then flows through only part of the pore network. Define <span class="keyterm">effective permeability</span> k<sub>o</sub>, k<sub>w</sub>, k<sub>g</sub> (functions of saturation) and <span class="keyterm">relative permeability</span>:</p>
+<div class="fx">k<sub>ro</sub> = k<sub>o</sub>/k, &nbsp; k<sub>rw</sub> = k<sub>w</sub>/k, &nbsp; 0 ≤ k<sub>r</sub> ≤ 1, &nbsp; k<sub>ro</sub>+k<sub>rw</sub> &lt; 1</div>
+<p>Key features of the water–oil curves: k<sub>rw</sub>=0 below S<sub>wc</sub>; k<sub>ro</sub>=0 at 1−S<sub>or</sub>; the crossover saturation (k<sub>ro</sub>=k<sub>rw</sub>) sits above S<sub>w</sub>=0.5 for water-wet rock and below it for oil-wet rock. <span class="keyterm">Wettability</span> — which fluid preferentially coats the grains — controls the shapes: water-wet rock holds water in small pores and corners, letting oil flow efficiently; oil-wet rock does the opposite and waterfloods poorly.</p>
+<p>Smooth laboratory curves are usually modelled with <b>Corey</b> functions of normalised saturation S<sub>wn</sub> = (S<sub>w</sub>−S<sub>wc</sub>)/(1−S<sub>wc</sub>−S<sub>or</sub>):</p>
+<div class="fx">k<sub>rw</sub> = k<sub>rw</sub>° · S<sub>wn</sub><sup>n<sub>w</sub></sup>, &nbsp;&nbsp; k<sub>ro</sub> = k<sub>ro</sub>° · (1−S<sub>wn</sub>)<sup>n<sub>o</sub></sup></div>
+<div class="lab" data-widget="relperm"><div class="lh"><span class="dot"></span><b>Lab · Relative Permeability Explorer</b></div>
+<div class="body"><div class="ctrl">
+<label>S<sub>wc</sub> <b data-out="swc"></b><input type="range" min="0.05" max="0.4" step="0.01" value="0.20" data-in="swc"></label>
+<label>S<sub>or</sub> <b data-out="sor"></b><input type="range" min="0.1" max="0.4" step="0.01" value="0.25" data-in="sor"></label>
+<label>n<sub>w</sub> (water Corey exp.) <b data-out="nw"></b><input type="range" min="1" max="6" step="0.1" value="3" data-in="nw"></label>
+<label>n<sub>o</sub> (oil Corey exp.) <b data-out="no"></b><input type="range" min="1" max="6" step="0.1" value="2" data-in="no"></label>
+<label>k<sub>rw</sub>° endpoint <b data-out="krwe"></b><input type="range" min="0.1" max="1" step="0.02" value="0.4" data-in="krwe"></label>
+</div>
+<canvas width="720" height="420"></canvas>
+<p style="font-size:12.5px;color:var(--dim);margin:0">Raise k<sub>rw</sub>° toward 1 and drop the crossover below S<sub>w</sub>=0.5 — you have just made the rock oil-wet, and you can feel why its waterflood will be leaky and early to break through.</p>
+</div></div>
+`},
+{title:"Capillary pressure & the transition zone", type:"read", html:`
+<h3>Pressure discontinuity at every meniscus</h3>
+<p>Where two immiscible fluids meet in a pore throat, interfacial tension curves the interface and supports a pressure difference — the <span class="keyterm">capillary pressure</span>:</p>
+<div class="fx"><span class="lbl">Capillary tube model</span>P<sub>c</sub> = p<sub>non-wetting</sub> − p<sub>wetting</sub> = <span class="frac"><span>2 σ cos θ</span><span>r</span></span></div>
+<div class="vars"><b>σ</b> interfacial tension · <b>θ</b> contact angle (θ&lt;90° water-wet) · <b>r</b> pore-throat radius. Small pores → huge P<sub>c</sub>.</div>
+<p>In the reservoir, P<sub>c</sub> at height h above the <span class="keyterm">free-water level (FWL)</span> is set by the density difference:</p>
+<div class="fx">P<sub>c</sub>(h) = <span class="frac"><span>(ρ<sub>w</sub> − ρ<sub>o</sub>) h</span><span>144</span></span> &nbsp;psi&nbsp;&nbsp;(ρ in lb/ft³, h in ft)</div>
+<p>Invert the lab P<sub>c</sub>(S<sub>w</sub>) curve with this relation and you get the <b>saturation–height function</b>: the <span class="keyterm">transition zone</span> over which S<sub>w</sub> falls from 100% at the FWL to S<sub>wc</sub> high above it. Tight, small-pored rock → tall transition zones (hundreds of feet possible); high-k rock → sharp contacts. Note the OWC (lowest depth producing oil) sits <em>above</em> the FWL by the displacement (entry) pressure P<sub>d</sub>.</p>
+<p>Key P<sub>c</sub> concepts: <b>displacement pressure</b> P<sub>d</sub> (minimum P<sub>c</sub> for the non-wetting phase to enter the largest pores — also what makes cap rocks seal), <b>drainage vs imbibition hysteresis</b>, and the <b>Leverett J-function</b> that lets one dimensionless curve represent many core plugs:</p>
+<div class="fx">J(S<sub>w</sub>) = 0.21645 · <span class="frac"><span>P<sub>c</sub></span><span>σ cos θ</span></span> · √(k/φ)</div>
+<div class="example"><div class="xh">Worked example — height of the transition zone</div><div class="xb">
+<p>Lab air–mercury data converted to reservoir oil–water gives P<sub>c</sub> = 9 psi at S<sub>w</sub>=50%. ρ<sub>w</sub>=68, ρ<sub>o</sub>=48 lb/ft³. At what height above the FWL is S<sub>w</sub>=50%?</p>
+<details class="step"><summary>Solution</summary><div class="sb">h = 144·P<sub>c</sub>/(ρ<sub>w</sub>−ρ<sub>o</sub>) = 144×9/20 = <b>64.8 ft</b>. Wells perforated within ~65 ft of the FWL will make water from day one — plan perforations accordingly.</div></details>
+</div></div>
+`},
+{title:"Checkpoint · Module 3", type:"quiz", quiz:[
+{q:"Effective porosity differs from total porosity because it excludes…",opts:["Fracture porosity","Isolated, unconnected pores","Water-filled pores","Vugs"],a:1,why:"Only interconnected pore volume can flow fluids; isolated pores store but never deliver."},
+{q:"Flow crosses three beds in series (equal length) with k = 200, 50 and 5 md. The average is closest to…",opts:["85 md (arithmetic)","13.6 md (harmonic)","37 md (geometric)","255 md"],a:1,why:"Series flow → harmonic mean = 3/(1/200+1/50+1/5) ≈ 13.3–13.6 md. The 5-md streak dominates."},
+{q:"In strongly water-wet rock, the krw–kro crossover occurs at…",opts:["Sw < 0.5","Sw > 0.5","Exactly Sw = 0.5","Swc"],a:1,why:"Water clings to grain surfaces and small pores, suppressing krw; the curves cross above 50% water saturation."},
+{q:"Capillary pressure in a pore throat increases when…",opts:["Pore radius increases","Interfacial tension decreases","Pore radius decreases","Contact angle goes to 90°"],a:2,why:"Pc = 2σcosθ/r — smaller throats hold larger capillary pressures."},
+{q:"Total compressibility ct is…",opts:["cf only","co+cw+cg","coSo + cwSw + cgSg + cf","The gas compressibility at pb"],a:2,why:"Each fluid weighted by its saturation, plus the pore-volume compressibility."},
+{q:"The Klinkenberg correction addresses…",opts:["Turbulence at high rates","Gas slippage at low pressure inflating measured k","Core drying damage","Overburden stress on plugs"],a:1,why:"Gas slip along pore walls makes kg > kL; extrapolating kg vs 1/p̄ to 1/p̄→0 recovers the true liquid permeability."}
+]}
+]});
+</script>
+<script>
+/* =================== MODULES 4–6 =================== */
+COURSE.push({
+id:"m4", num:"04", title:"Reservoir Fluid Properties", depth:"1,100 – 1,600 m",
+tag:"Fluid physics",
+blurb:"Phase diagrams, the five reservoir fluids, real-gas behaviour (z, Bg, cg, μg) and black-oil properties (Rs, Bo, Bt, co, μo).",
+lessons:[
+{title:"Phase behaviour & the five reservoir fluids", type:"read", html:`
+<h3>The pressure–temperature phase envelope</h3>
+<p>Plot a hydrocarbon mixture on a p–T diagram: the <span class="keyterm">bubble-point curve</span> and <span class="keyterm">dew-point curve</span> meet at the <span class="keyterm">critical point</span> and enclose the two-phase region. Two special points bound the envelope: the <span class="keyterm">cricondentherm</span> (maximum two-phase temperature) and <span class="keyterm">cricondenbar</span> (maximum two-phase pressure). Where the reservoir temperature T<sub>R</sub> sits relative to these features classifies the fluid:</p>
+<table class="data"><tr><th>Fluid type</th><th>T<sub>R</sub> vs envelope</th><th>Initial GOR (scf/stb)</th><th>Stock-tank gravity</th><th>Signature</th></tr>
+<tr><td>Black oil</td><td>T<sub>R</sub> ≪ T<sub>c</sub></td><td>&lt; ~2,000</td><td>&lt; ~45° API, dark</td><td>Wide envelope; Bo &lt; 2</td></tr>
+<tr><td>Volatile oil</td><td>T<sub>R</sub> just below T<sub>c</sub></td><td>2,000–3,300</td><td>&gt; 40° API</td><td>Huge shrinkage; isovols crowded near bubble line</td></tr>
+<tr><td>Retrograde gas-condensate</td><td>T<sub>c</sub> &lt; T<sub>R</sub> &lt; cricondentherm</td><td>3,300–150,000</td><td>40–60° API liquid</td><td>Liquid <em>condenses</em> in the reservoir as p falls</td></tr>
+<tr><td>Wet gas</td><td>T<sub>R</sub> &gt; cricondentherm</td><td>&gt; 50,000</td><td>condensate at surface only</td><td>Two phases in separator, one in reservoir</td></tr>
+<tr><td>Dry gas</td><td>T<sub>R</sub> &gt; cricondentherm</td><td>≈ ∞</td><td>no liquids</td><td>Single phase everywhere</td></tr></table>
+<div class="callout oil"><div class="ct">The retrograde paradox</div><p>Drop the pressure of a gas-condensate isothermally and liquid <em>appears</em> — the opposite of everyday intuition. That liquid clings immobile in the pores near wells (condensate banking), choking gas deliverability and stranding the most valuable molecules. This is why condensate fields are often produced with gas <em>recycling</em> above the dew point.</p></div>
+<h3>Behaviour on depletion</h3>
+<p>An undersaturated black oil produced from p<sub>i</sub> down to p<sub>b</sub> is single phase; below p<sub>b</sub> gas breaks out, oil shrinks, viscosity rises. These changes are captured by the black-oil property set — R<sub>s</sub>, B<sub>o</sub>, B<sub>g</sub>, μ — which the next two lessons build.</p>
+`},
+{title:"Real-gas behaviour: z, Bg, cg, μg", type:"read", html:`
+<h3>The real-gas law</h3>
+<div class="fx">pV = z n R T</div>
+<p>The <span class="keyterm">z-factor</span> (deviation factor) corrects the ideal-gas law for molecular volume and attraction. By the <span class="keyterm">law of corresponding states</span>, z is a universal function of pseudo-reduced properties:</p>
+<div class="fx">T<sub>pr</sub> = T/T<sub>pc</sub>, &nbsp; p<sub>pr</sub> = p/p<sub>pc</sub>; &nbsp;&nbsp;T<sub>pc</sub> = Σy<sub>i</sub>T<sub>ci</sub>, &nbsp;p<sub>pc</sub> = Σy<sub>i</sub>p<sub>ci</sub> (Kay's rule)</div>
+<p>Without a composition, Sutton's correlations from gas gravity γ<sub>g</sub> (= M<sub>a</sub>/28.96) work well:</p>
+<div class="fx">T<sub>pc</sub> = 169.2 + 349.5γ<sub>g</sub> − 74.0γ<sub>g</sub>² &nbsp;(°R)<br>p<sub>pc</sub> = 756.8 − 131.0γ<sub>g</sub> − 3.6γ<sub>g</sub>² &nbsp;(psia)</div>
+<p>z is then read from the Standing–Katz chart — or computed with the Dranchuk–Abou-Kassem (DAK) equation of state, which is exactly what the lab below does. Corrections (Wichert–Aziz) apply when CO₂/H₂S are present.</p>
+<h3>Gas formation volume factor, compressibility, viscosity</h3>
+<div class="fx"><span class="lbl">Gas FVF (reservoir volume per standard volume)</span>B<sub>g</sub> = 0.02827 <span class="frac"><span>z T</span><span>p</span></span> ft³/scf &nbsp;=&nbsp; 0.00504 <span class="frac"><span>z T</span><span>p</span></span> bbl/scf &nbsp;&nbsp;(T in °R)</div>
+<div class="fx"><span class="lbl">Isothermal gas compressibility</span>c<sub>g</sub> = <span class="frac"><span>1</span><span>p</span></span> − <span class="frac"><span>1</span><span>z</span></span>·<span class="frac"><span>∂z</span><span>∂p</span></span> &nbsp;&nbsp;(≈ 1/p for near-ideal gas)</div>
+<p>Gas <b>expansion factor</b> E<sub>g</sub> = 1/B<sub>g</sub>. Gas viscosity μ<sub>g</sub> (0.01–0.03 cp) is estimated from the Lee–Gonzalez–Eakin or Carr correlations; unusually, μ<sub>g</sub> <em>increases</em> with pressure and temperature at reservoir conditions.</p>
+<div class="lab" data-widget="zfac"><div class="lh"><span class="dot"></span><b>Lab · z-Factor &amp; B<sub>g</sub> Engine (Dranchuk–Abou-Kassem)</b></div>
+<div class="body"><div class="ctrl">
+<label>Gas gravity γ<sub>g</sub> (air=1)<input type="number" value="0.70" step="0.01" min="0.55" max="1.5" data-in="sg"></label>
+<label>Pressure (psia)<input type="number" value="3000" step="50" min="100" data-in="p"></label>
+<label>Temperature (°F)<input type="number" value="180" step="5" data-in="t"></label>
+</div>
+<div class="readout">
+<div class="chip"><span>T<sub>pc</sub> / p<sub>pc</sub></span><b data-out="pc"></b></div>
+<div class="chip"><span>T<sub>pr</sub> / p<sub>pr</sub></span><b data-out="pr"></b></div>
+<div class="chip"><span>z-factor</span><b data-out="z"></b></div>
+<div class="chip"><span>B<sub>g</sub></span><b data-out="bg"></b></div>
+<div class="chip"><span>E<sub>g</sub> = 1/B<sub>g</sub></span><b data-out="eg"></b></div>
+</div>
+<canvas width="720" height="380"></canvas>
+<p style="font-size:12.5px;color:var(--dim);margin:0">The curve shows z vs pressure at your temperature — the classic Standing–Katz “dip”: attraction dominates at moderate pressure (z&lt;1), molecular volume dominates at high pressure (z&gt;1).</p>
+</div></div>
+`},
+{title:"Black-oil properties: Rs, Bo, Bt, co, μo", type:"read", html:`
+<h3>Solution gas–oil ratio R<sub>s</sub></h3>
+<p><span class="keyterm">R<sub>s</sub></span> = scf of gas dissolved per stb of oil at given p, T. Above p<sub>b</sub> it is constant at R<sub>si</sub> (nothing escapes); below p<sub>b</sub> it falls as gas is liberated. Standing's correlation (California crudes) is the workhorse estimate:</p>
+<div class="fx">R<sub>s</sub> = γ<sub>g</sub>[ (p/18.2 + 1.4) · 10<sup>(0.0125·API − 0.00091·T)</sup> ]<sup>1.2048</sup></div>
+<h3>Oil formation volume factor B<sub>o</sub></h3>
+<p><span class="keyterm">B<sub>o</sub></span> = reservoir bbl per stock-tank bbl (rb/stb). It exceeds 1 because reservoir oil carries dissolved gas and thermal expansion. B<sub>o</sub> rises with pressure up to p<sub>b</sub> (more gas dissolved), peaks at p<sub>b</sub>, then <em>declines slightly above p<sub>b</sub></em> (pure liquid compression):</p>
+<div class="fx"><span class="lbl">Standing, saturated oil</span>B<sub>o</sub> = 0.9759 + 0.000120·[ R<sub>s</sub>(γ<sub>g</sub>/γ<sub>o</sub>)<sup>0.5</sup> + 1.25T ]<sup>1.2</sup><br><span class="lbl" style="margin-top:8px">Above bubble point</span>B<sub>o</sub> = B<sub>ob</sub> · e<sup>−c<sub>o</sub>(p−p<sub>b</sub>)</sup></div>
+<h3>Total (two-phase) FVF and oil compressibility</h3>
+<div class="fx">B<sub>t</sub> = B<sub>o</sub> + B<sub>g</sub>(R<sub>si</sub> − R<sub>s</sub>)</div>
+<p>B<sub>t</sub> tracks the volume occupied by 1 stb of oil <em>plus all its original gas</em> — the natural variable of material balance. Undersaturated oil compressibility (Vasquez–Beggs):</p>
+<div class="fx">c<sub>o</sub> = <span class="frac"><span>−1433 + 5R<sub>s</sub> + 17.2T − 1180γ<sub>g</sub> + 12.61·API</span><span>10<sup>5</sup> · p</span></span></div>
+<h3>Oil viscosity μ<sub>o</sub></h3>
+<p>Dead-oil viscosity (no gas) from Beggs–Robinson, then reduced for dissolved gas below p<sub>b</sub> (live oil), then increased for compression above p<sub>b</sub>. The pattern to internalise: <b>μ<sub>o</sub> falls as pressure rises to p<sub>b</sub></b> (gas thins the oil), then rises slowly above p<sub>b</sub>. Every property — R<sub>s</sub>, B<sub>o</sub>, μ<sub>o</sub>, c<sub>o</sub> — has its characteristic kink at the bubble point; a PVT plot without that kink is a plot you should question.</p>
+<div class="example"><div class="xh">Worked example — density of reservoir oil</div><div class="xb">
+<p>A 35° API oil (γ<sub>o</sub> = 141.5/(131.5+35) = 0.850) has R<sub>s</sub> = 600 scf/stb (γ<sub>g</sub>=0.75) and B<sub>o</sub>=1.32 rb/stb. Find reservoir oil density.</p>
+<details class="step"><summary>Solution — mass balance per stb</summary><div class="sb">ρ<sub>o</sub> = (350γ<sub>o</sub> + 0.0764γ<sub>g</sub>R<sub>s</sub>) / (5.615·B<sub>o</sub>) = (350×0.850 + 0.0764×0.75×600)/(5.615×1.32) = (297.5+34.4)/7.412 = <b>44.8 lb/ft³</b> → gradient 44.8/144 = 0.311 psi/ft. This is where the oil gradients of Module 2 come from.</div></details>
+</div></div>
+`},
+{title:"Checkpoint · Module 4", type:"quiz", quiz:[
+{q:"A reservoir at T between the critical temperature and the cricondentherm contains…",opts:["Black oil","Volatile oil","Retrograde gas-condensate","Dry gas"],a:2,why:"That temperature window is the retrograde region: isothermal depletion crosses the dew-point curve and liquid condenses in the reservoir."},
+{q:"Bg = 0.02827·zT/p. If z=0.85, T=640°R, p=3,200 psia, Bg ≈…",opts:["0.0048 ft³/scf","0.048 ft³/scf","0.48 ft³/scf","4.8 ft³/scf"],a:0,why:"0.02827×0.85×640/3200 = 0.00481 ft³/scf — reservoir gas is ~200× denser than surface gas."},
+{q:"Above the bubble point, Rs…",opts:["Rises with pressure","Falls with pressure","Stays constant at Rsi","Equals zero"],a:2,why:"No gas can escape solution above pb, so Rs is fixed at its initial value."},
+{q:"Oil viscosity, moving from low pressure up to pb, generally…",opts:["Rises (compression)","Falls (more dissolved gas thins the oil)","Is constant","Equals gas viscosity at pb"],a:1,why:"Dissolved gas lightens and thins the oil; μo reaches its minimum at pb, then rises slowly with further compression."},
+{q:"Bt = Bo + Bg(Rsi − Rs) represents…",opts:["Gas cap volume","The reservoir volume of 1 stb oil plus its liberated gas","Water FVF","Shrinkage only"],a:1,why:"The two-phase FVF tracks oil and all gas originally dissolved in it — the bookkeeping unit of material balance."},
+{q:"The Standing–Katz z-chart dips below 1.0 at moderate pressures because…",opts:["Molecular volume dominates","Intermolecular attraction compresses the gas more than ideal","Temperature is too low to matter","The chart is empirical noise"],a:1,why:"Attraction pulls molecules together (z<1); at high pressure finite molecular volume pushes z above 1."}
+]}
+]});
+
+COURSE.push({
+id:"m5", num:"05", title:"PVT Laboratory Analysis", depth:"1,600 – 1,900 m",
+tag:"Fluid physics",
+blurb:"How the numbers of Module 4 are actually measured: sampling, constant composition expansion, differential liberation, and separator tests.",
+lessons:[
+{title:"Sampling and the three classic experiments", type:"read", html:`
+<h3>Getting a representative sample</h3>
+<p>Everything downstream depends on capturing fluid that represents the original reservoir. <b>Bottom-hole (subsurface) sampling</b> catches single-phase fluid at depth — best while p<sub>wf</sub> &gt; p<sub>b</sub>. <b>Surface recombination sampling</b> collects separator gas and liquid and recombines them at the measured producing GOR — cheaper, but only valid if the well was flowing stably with GOR = R<sub>si</sub>. Sample early, before pressure falls below the bubble point anywhere near the well.</p>
+<h3>1 · Constant Composition Expansion (CCE / flash expansion)</h3>
+<p>The sealed cell's volume is expanded in steps at reservoir temperature; <em>nothing is removed</em>. Plot total volume vs pressure: the sharp break in slope marks <span class="keyterm">p<sub>b</sub></span>. Above p<sub>b</sub>, CCE yields oil compressibility and relative volume V/V<sub>b</sub>; below p<sub>b</sub>, total two-phase volume.</p>
+<h3>2 · Differential Liberation (DL)</h3>
+<p>Below p<sub>b</sub>, at each pressure step the liberated gas is <em>removed</em> from the cell before the next step. This mimics the reservoir, where mobile gas flows away from the oil. DL reports, at each pressure: <b>R<sub>sd</sub></b>, <b>B<sub>od</sub></b>, liberated-gas z and gravity, and oil density — the depletion path of the <em>reservoir</em>.</p>
+<h3>3 · Separator tests</h3>
+<p>Reservoir oil is flashed through one or more separator stages to stock tank, reporting <b>B<sub>ofb</sub></b> and <b>R<sub>sfb</sub></b> for each separator pressure. This mimics what happens in the <em>tubing and facilities</em>. Running several separator pressures finds the optimum (maximum stock-tank recovery, minimum B<sub>o</sub>).</p>
+<div class="callout"><div class="ct">Why two liberation styles?</div><p>Gas leaving oil in the reservoir does so gradually and escapes (differential); gas leaving in the separator does so in one violent step with everything kept in contact (flash). Real oil experiences <em>both</em> — so lab data must be combined, which is the next lesson.</p></div>
+`},
+{title:"Converting lab data to field black-oil properties", type:"read", html:`
+<h3>The composite correction</h3>
+<p>Field B<sub>o</sub> and R<sub>s</sub> must describe: differential depletion in the reservoir <em>followed by</em> flash through the actual separators. The standard adjustment scales the DL curves by the separator-test anchors:</p>
+<div class="fx"><span class="lbl">Corrected FVF (saturated region)</span>B<sub>o</sub> = B<sub>od</sub> · <span class="frac"><span>B<sub>ofb</sub></span><span>B<sub>odb</sub></span></span></div>
+<div class="fx"><span class="lbl">Corrected solution GOR</span>R<sub>s</sub> = R<sub>sfb</sub> − (R<sub>sdb</sub> − R<sub>sd</sub>) · <span class="frac"><span>B<sub>ofb</sub></span><span>B<sub>odb</sub></span></span></div>
+<div class="vars"><b>subscript d</b> = differential at pressure p · <b>db</b> = differential at bubble point · <b>fb</b> = flash (separator test) from bubble point.</div>
+<div class="example"><div class="xh">Worked example — building the field Bo</div><div class="xb">
+<p>DL at p<sub>b</sub>: B<sub>odb</sub>=1.485, R<sub>sdb</sub>=720. Separator test: B<sub>ofb</sub>=1.392, R<sub>sfb</sub>=646. At p=1,800 psia the DL reports B<sub>od</sub>=1.376, R<sub>sd</sub>=520. Find field values at 1,800 psia.</p>
+<details class="step"><summary>Step 1 — scale factor</summary><div class="sb">B<sub>ofb</sub>/B<sub>odb</sub> = 1.392/1.485 = 0.9374.</div></details>
+<details class="step"><summary>Step 2 — corrected values</summary><div class="sb">B<sub>o</sub> = 1.376×0.9374 = <b>1.290 rb/stb</b>. R<sub>s</sub> = 646 − (720−520)×0.9374 = 646 − 187.5 = <b>458 scf/stb</b>.</div></details>
+<details class="step"><summary>Why it matters</summary><div class="sb">Using raw DL values in material balance overstates B<sub>o</sub> and R<sub>s</sub> — a classic source of OOIP error of several percent.</div></details>
+</div></div>
+<h3>Quality-control instincts</h3>
+<ul>
+<li>Check p<sub>b</sub> consistency between CCE and DL (should agree within a few psi).</li>
+<li>All property curves must kink at the same p<sub>b</sub>.</li>
+<li>Recombination GOR should match the stabilised field GOR at sampling time.</li>
+<li>For gas condensates, the analogous experiment is the <b>constant volume depletion (CVD)</b> test, yielding liquid-dropout curves and produced-gas compositions.</li>
+</ul>
+`},
+{title:"Checkpoint · Module 5", type:"quiz", quiz:[
+{q:"In a CCE test, the bubble point appears as…",opts:["A colour change","A sharp break in the pressure–volume slope","Gas venting from the cell","A temperature spike"],a:1,why:"Liquid is stiff, two-phase mixtures are compressible: the p–V slope breaks abruptly at pb."},
+{q:"Differential liberation differs from flash liberation because…",opts:["It is done at surface temperature","Liberated gas is removed at each step","Composition stays constant","Oil is removed at each step"],a:1,why:"Removing gas at each step changes the remaining composition — mimicking gas escaping in the reservoir."},
+{q:"Separator tests are run at several pressures to…",opts:["Measure permeability","Find the separator pressure giving maximum stock-tank oil (minimum Bo)","Calibrate the pressure gauges","Measure water salinity"],a:1,why:"An optimum separator pressure maximises liquid recovery; too high or too low flashes valuable intermediates to gas."},
+{q:"Field Bo below pb is obtained from lab data as…",opts:["Bod alone","Bofb alone","Bod × (Bofb/Bodb)","Bod + Bofb"],a:2,why:"DL shape scaled to the separator-test anchor combines reservoir-style liberation with the real surface flash."},
+{q:"Surface recombination sampling is invalid when…",opts:["GOR at sampling ≠ Rsi (well already below pb)","Separator pressure is known","The oil is undersaturated","Two separators are used"],a:0,why:"If free gas already flows, the measured GOR no longer represents the original dissolved gas, and the recombined fluid is wrong."}
+]}
+]});
+
+COURSE.push({
+id:"m6", num:"06", title:"Volumetric Reserves Estimation", depth:"1,900 – 2,200 m",
+tag:"Volumes",
+blurb:"From contour maps to barrels: bulk-volume integration, OOIP & OGIP formulas, recovery factors, and probabilistic (Monte Carlo) estimates.",
+lessons:[
+{title:"From maps to bulk volume", type:"read", html:`
+<h3>The volumetric chain</h3>
+<p>Volumetrics is the geologist–engineer handshake: seismic + well picks → structure and isopach maps → bulk rock volume → pore volume → hydrocarbon pore volume → surface volumes.</p>
+<p>Given areas A<sub>0</sub>, A<sub>1</sub>, … A<sub>n</sub> enclosed by successive isopach contours (spacing h), integrate:</p>
+<div class="fx"><span class="lbl">Trapezoidal rule (adjacent ratio &gt; 0.5)</span>ΔV = <span class="frac"><span>h</span><span>2</span></span>(A<sub>n</sub> + A<sub>n+1</sub>)</div>
+<div class="fx"><span class="lbl">Pyramidal rule (adjacent ratio ≤ 0.5, near the crest)</span>ΔV = <span class="frac"><span>h</span><span>3</span></span>(A<sub>n</sub> + A<sub>n+1</sub> + √(A<sub>n</sub>A<sub>n+1</sub>))</div>
+<div class="fx"><span class="lbl">Simpson's rule (odd number of equally spaced contours)</span>V = <span class="frac"><span>h</span><span>3</span></span>(A<sub>0</sub> + 4A<sub>1</sub> + 2A<sub>2</sub> + 4A<sub>3</sub> + … + A<sub>n</sub>) + <span class="frac"><span>t̄<sub>top</sub>A<sub>n</sub></span><span>1</span></span></div>
+<p>The trapezoidal rule slightly overestimates near a rounded crest — hence the switch to the pyramidal formula when successive areas shrink quickly.</p>
+<h3>Net-to-gross</h3>
+<p>Only reservoir-quality rock counts. Apply the <span class="keyterm">net-to-gross ratio (NTG)</span> from log cutoffs (V<sub>shale</sub>, φ, S<sub>w</sub>) to convert gross to net rock volume.</p>
+`},
+{title:"OOIP, OGIP, recovery factor — and uncertainty", type:"read", html:`
+<h3>The master formulas</h3>
+<div class="fx"><span class="lbl">Original oil in place (stb)</span>N = <span class="frac"><span>7758 · A · h · φ · (1 − S<sub>wi</sub>)</span><span>B<sub>oi</sub></span></span></div>
+<div class="vars"><b>7758</b> = bbl per acre-ft · <b>A</b> acres · <b>h</b> net pay ft · <b>φ</b> fraction · <b>S<sub>wi</sub></b> fraction · <b>B<sub>oi</sub></b> rb/stb.</div>
+<div class="fx"><span class="lbl">Original gas in place (scf)</span>G = <span class="frac"><span>43560 · A · h · φ · (1 − S<sub>wi</sub>)</span><span>B<sub>gi</sub></span></span> &nbsp;&nbsp;(B<sub>gi</sub> in ft³/scf)</div>
+<p><span class="keyterm">Reserves</span> = in-place volume × <span class="keyterm">recovery factor</span> (RF). RF comes from drive mechanism analogues, material balance, displacement calculations, or simulation. For volumetric (depletion) gas reservoirs, RF is elegantly analytic:</p>
+<div class="fx">RF<sub>gas</sub> = 1 − <span class="frac"><span>B<sub>gi</sub></span><span>B<sub>ga</sub></span></span> = 1 − <span class="frac"><span>(p/z)<sub>abandon</sub></span><span>(p/z)<sub>initial</sub></span></span> &nbsp;&nbsp;(often 70–90%)</div>
+<h3>Deterministic vs probabilistic</h3>
+<p>Every input (A, h, φ, S<sub>w</sub>, B<sub>o</sub>, NTG, RF) is uncertain. Modern practice samples each from a distribution and runs thousands of trials — <span class="keyterm">Monte Carlo simulation</span> — reporting <b>P90</b> (90% probability of at least this much — proved-like), <b>P50</b> (best estimate) and <b>P10</b> (upside). Because the inputs multiply, the result is roughly log-normal and the mean exceeds P50.</p>
+<div class="lab" data-widget="ooip"><div class="lh"><span class="dot"></span><b>Lab · OOIP Calculator + Monte Carlo</b></div>
+<div class="body"><div class="ctrl">
+<label>Area A (acres) ±20%<input type="number" value="1200" data-in="a"></label>
+<label>Net pay h (ft) ±15%<input type="number" value="45" data-in="h"></label>
+<label>Porosity φ ±10%<input type="number" value="0.22" step="0.01" data-in="phi"></label>
+<label>S<sub>wi</sub> ±10%<input type="number" value="0.25" step="0.01" data-in="sw"></label>
+<label>B<sub>oi</sub> (rb/stb) ±5%<input type="number" value="1.30" step="0.01" data-in="boi"></label>
+<label>Recovery factor ±25%<input type="number" value="0.32" step="0.01" data-in="rf"></label>
+</div>
+<div class="readout">
+<div class="chip"><span>Deterministic OOIP</span><b data-out="n"></b></div>
+<div class="chip"><span>P90 reserves</span><b data-out="p90"></b></div>
+<div class="chip"><span>P50 reserves</span><b data-out="p50"></b></div>
+<div class="chip"><span>P10 reserves</span><b data-out="p10"></b></div>
+</div>
+<canvas width="720" height="330"></canvas>
+<p style="font-size:12.5px;color:var(--dim);margin:0">5,000 Monte Carlo trials, each input drawn from a triangular distribution around your value (± the stated spread). Note the right-skewed histogram — products of uncertain numbers are log-normal-ish, and the P10/P90 ratio is a standard maturity metric of an asset.</p>
+</div></div>
+<div class="example"><div class="xh">Worked example — quick-look OOIP</div><div class="xb">
+<p>A=1,200 ac, h=45 ft, φ=0.22, S<sub>wi</sub>=0.25, B<sub>oi</sub>=1.30.</p>
+<details class="step"><summary>Solution</summary><div class="sb">N = 7758×1200×45×0.22×0.75/1.30 = <b>≈ 53.2 MMstb</b>. At RF=32%, reserves ≈ 17.0 MMstb.</div></details>
+</div></div>
+`},
+{title:"Checkpoint · Module 6", type:"quiz", quiz:[
+{q:"The constant 7758 in the OOIP formula converts…",opts:["psi to psia","acre-feet to barrels","scf to stb","md to darcy"],a:1,why:"One acre-foot contains 7,758 barrels; 43,560 is its ft³ equivalent used for gas."},
+{q:"Two successive isopach contour areas are 900 and 380 acres. Which incremental-volume rule applies?",opts:["Trapezoidal (ratio > 0.5)","Pyramidal (ratio ≤ 0.5)","Simpson only","Neither"],a:1,why:"380/900 = 0.42 ≤ 0.5 → the crest is closing fast; use the pyramidal frustum formula."},
+{q:"For a volumetric dry-gas reservoir with (p/z)i = 5,000 and (p/z)ab = 900 psia, RF ≈…",opts:["18%","55%","82%","95%"],a:2,why:"RF = 1 − 900/5000 = 0.82 — the beauty of depletion gas reservoirs."},
+{q:"P90 reserves means…",opts:["The 90th percentile upside","A value with 90% probability that actual reserves equal or exceed it","OOIP × 0.90","Reserves after 90% water cut"],a:1,why:"P90 is the conservative, proved-like tail: 90% chance of at least this volume."},
+{q:"Doubling porosity in the volumetric formula, all else fixed, changes N by…",opts:["√2","×2","×4","No change"],a:1,why:"N is linear in each multiplicative input — which is also why fractional errors in each input add up in the total."}
+]}
+]});
+</script>
+<script>
+/* =================== MODULES 7–9 =================== */
+COURSE.push({
+id:"m7", num:"07", title:"Material Balance — Oil Reservoirs", depth:"2,200 – 2,500 m",
+tag:"Volumes",
+blurb:"The general material balance equation from first principles, drive indices, and the Havlena–Odeh straight-line method.",
+lessons:[
+{title:"Deriving the general material balance equation", type:"read", html:`
+<h3>The zero-dimensional tank</h3>
+<p>Treat the reservoir as one tank at uniform (average) pressure. The logic is pure conservation: <em>the reservoir volume vacated by produced fluids must be filled by the expansion of what remains plus anything that entered.</em> Balance everything in reservoir barrels at pressure p:</p>
+<div class="fx"><span class="lbl">Underground withdrawal = expansion + influx</span>N<sub>p</sub>[B<sub>o</sub> + (R<sub>p</sub> − R<sub>s</sub>)B<sub>g</sub>] + W<sub>p</sub>B<sub>w</sub> = N·E<sub>o</sub> + N·m·E<sub>g</sub> + N(1+m)E<sub>f,w</sub> + W<sub>e</sub> + (W<sub>inj</sub>B<sub>w</sub> + G<sub>inj</sub>B<sub>g,inj</sub>)</div>
+<p>with the three expansion terms:</p>
+<div class="fx">E<sub>o</sub> = (B<sub>o</sub> − B<sub>oi</sub>) + (R<sub>si</sub> − R<sub>s</sub>)B<sub>g</sub> &nbsp;&nbsp;<span style="color:var(--dim)">— oil + liberated solution gas</span><br>
+E<sub>g</sub> = B<sub>oi</sub>[ B<sub>g</sub>/B<sub>gi</sub> − 1 ] &nbsp;&nbsp;<span style="color:var(--dim)">— gas-cap expansion</span><br>
+E<sub>f,w</sub> = B<sub>oi</sub> <span class="frac"><span>c<sub>w</sub>S<sub>wc</sub> + c<sub>f</sub></span><span>1 − S<sub>wc</sub></span></span> Δp &nbsp;&nbsp;<span style="color:var(--dim)">— connate water + pore compaction</span></div>
+<div class="vars"><b>N</b> OOIP, stb · <b>N<sub>p</sub></b> cumulative oil, stb · <b>R<sub>p</sub></b> = G<sub>p</sub>/N<sub>p</sub> cumulative produced GOR · <b>m</b> = (gas-cap HC pore volume)/(oil-zone HC pore volume) · <b>W<sub>e</sub></b> water influx, rb · <b>Δp</b> = p<sub>i</sub> − p.</div>
+<p>Special cases fall out instantly:</p>
+<ul>
+<li><b>Undersaturated, no aquifer</b> (R<sub>s</sub>=R<sub>si</sub>, m=0, W<sub>e</sub>=0): N<sub>p</sub>B<sub>o</sub> = N B<sub>oi</sub> c<sub>e</sub> Δp with the effective compressibility c<sub>e</sub> = (c<sub>o</sub>S<sub>o</sub>+c<sub>w</sub>S<sub>wc</sub>+c<sub>f</sub>)/(1−S<sub>wc</sub>). Note c<sub>f</sub> and c<sub>w</sub> are <em>not</em> negligible here — they can be half the energy.</li>
+<li><b>Solution-gas drive below p<sub>b</sub></b>: drop m and W<sub>e</sub>; the equation ties N<sub>p</sub> and G<sub>p</sub> to fluid expansion alone.</li>
+</ul>
+<div class="callout"><div class="ct">What MB can and cannot see</div><p>Material balance is zero-dimensional: it knows nothing of well placement, permeability or geometry. That is its weakness and its power — it estimates N and diagnoses drive using only pressures, production and PVT, completely independent of the geological map. When MB-N and volumetric-N disagree, something important is wrong with one of them (connected volume ≠ mapped volume is the usual suspect).</p></div>
+`},
+{title:"Drive indices & the Havlena–Odeh straight line", type:"read", html:`
+<h3>Drive indices — the energy audit</h3>
+<p>Divide the MBE through by the total withdrawal and each energy source's share appears directly:</p>
+<div class="fx">DDI + SDI + WDI + CDI = 1<br>
+DDI = <span class="frac"><span>N·E<sub>o</sub></span><span>A</span></span>, &nbsp;SDI = <span class="frac"><span>N·m·E<sub>g</sub></span><span>A</span></span>, &nbsp;WDI = <span class="frac"><span>W<sub>e</sub> − W<sub>p</sub>B<sub>w</sub></span><span>A</span></span>, &nbsp;CDI = <span class="frac"><span>N(1+m)E<sub>f,w</sub></span><span>A</span></span></div>
+<div class="vars">A = N<sub>p</sub>[B<sub>o</sub> + (R<sub>p</sub>−R<sub>s</sub>)B<sub>g</sub>] — the underground withdrawal. DDI = depletion, SDI = (gas-cap) segregation, WDI = water, CDI = compaction/connate-water drive.</div>
+<p>Track the indices with time: a rising WDI announces a stronger-than-mapped aquifer; a collapsing DDI warns that pressure support must come from somewhere else — soon.</p>
+<h3>Havlena–Odeh: making MB a straight line</h3>
+<p>Write F = N<sub>p</sub>[B<sub>o</sub>+(R<sub>p</sub>−R<sub>s</sub>)B<sub>g</sub>] + W<sub>p</sub>B<sub>w</sub> (withdrawal) and E<sub>t</sub> = E<sub>o</sub> + mE<sub>g</sub> + (1+m)E<sub>f,w</sub>. Then:</p>
+<div class="fx">F = N·E<sub>t</sub> + W<sub>e</sub></div>
+<ul>
+<li><b>No aquifer:</b> plot F vs E<sub>t</sub> → straight line through the origin, slope = N. Curvature upward ⇒ hidden energy (aquifer or larger m); downward ⇒ over-estimated energy.</li>
+<li><b>Unknown m:</b> plot F/E<sub>o</sub> vs E<sub>g</sub>/E<sub>o</sub> → intercept N, slope Nm.</li>
+<li><b>With aquifer:</b> plot F/E<sub>t</sub> vs W<sub>e</sub>/E<sub>t</sub> (W<sub>e</sub> from an aquifer model, Module 9) → a correct model gives a straight line of slope 1 and intercept N. A curved plot means the aquifer model, not the reservoir, is wrong — iterate.</li>
+</ul>
+<div class="example"><div class="xh">Worked example — undersaturated depletion</div><div class="xb">
+<p>N unknown. p<sub>i</sub>=4,000 psia, current p=3,500 psia (above p<sub>b</sub>). N<sub>p</sub>=1.86 MMstb, B<sub>o</sub>=1.312, B<sub>oi</sub>=1.300, c<sub>w</sub>=3×10⁻⁶, c<sub>f</sub>=4×10⁻⁶ psi⁻¹, S<sub>wc</sub>=0.22, W<sub>e</sub>=W<sub>p</sub>=0.</p>
+<details class="step"><summary>Step 1 — expansion terms</summary><div class="sb">E<sub>o</sub> = B<sub>o</sub>−B<sub>oi</sub> = 0.012 rb/stb (no free gas above pb). E<sub>f,w</sub> = 1.300×[(3e-6×0.22+4e-6)/0.78]×500 = 1.300×5.97e-6×500 = 0.00388 rb/stb.</div></details>
+<details class="step"><summary>Step 2 — solve for N</summary><div class="sb">F = N<sub>p</sub>B<sub>o</sub> = 1.86e6×1.312 = 2.440 MMrb. N = F/(E<sub>o</sub>+E<sub>f,w</sub>) = 2.440e6/0.01588 = <b>≈ 154 MMstb</b>.</div></details>
+<details class="step"><summary>Step 3 — the lesson</summary><div class="sb">Ignoring rock and water compressibility (using E<sub>o</sub> alone) would give N = 203 MMstb — a 32% overestimate. Above the bubble point, E<sub>f,w</sub> is never optional.</div></details>
+</div></div>
+`},
+{title:"Checkpoint · Module 7", type:"quiz", quiz:[
+{q:"In the MBE, the parameter m is…",opts:["Slope of the p/z plot","Ratio of gas-cap to oil-zone hydrocarbon pore volume","Mobility ratio","Number of wells"],a:1,why:"m scales the gas-cap expansion term relative to the oil zone."},
+{q:"Eo = (Bo − Boi) + (Rsi − Rs)Bg. The second term represents…",opts:["Gas-cap gas","Expansion of gas liberated from solution","Injected gas","Water influx"],a:1,why:"Each stb of oil releases (Rsi − Rs) scf of gas, occupying Bg reservoir barrels per scf."},
+{q:"An F vs Et plot curves upward away from a straight line through the origin. Most likely cause:",opts:["N is negative","Unaccounted energy — e.g. water influx or a larger gas cap","Production data too accurate","co too large"],a:1,why:"Withdrawal outpacing modelled expansion means extra energy is entering — classic aquifer signature."},
+{q:"Above the bubble point with no aquifer, the drive energy comes from…",opts:["Free gas expansion only","Oil, connate water and pore-volume compressibility","Gravity only","Injected water"],a:1,why:"Single-phase oil expansion plus cw·Swc + cf — the compaction/connate-water terms are comparable to co."},
+{q:"If DDI + SDI + WDI + CDI is computed at several dates and WDI keeps rising, the reservoir is…",opts:["Purely depletion drive","Receiving increasing aquifer support","Losing its gas cap","Overpressured"],a:1,why:"A growing water-drive index means influx is supplying an increasing share of the voidage."},
+{q:"Material balance N differs from volumetric N mainly because MB sees…",opts:["Only the connected, pressure-communicating volume","Gross rock volume","The mapped area only","Stock-tank shrinkage"],a:0,why:"MB responds to whatever volume actually shares pressure with the wells — often less (compartments) than the map suggests."}
+]}
+]});
+
+COURSE.push({
+id:"m8", num:"08", title:"Material Balance — Gas Reservoirs", depth:"2,500 – 2,750 m",
+tag:"Volumes",
+blurb:"The p/z plot — the most elegant tool in the discipline — plus water-drive gas reservoirs and abnormal pressure pitfalls.",
+lessons:[
+{title:"The p/z method", type:"read", html:`
+<h3>Depletion gas MBE in three lines</h3>
+<p>For a volumetric (no-water-drive) gas reservoir, gas remaining = G − G<sub>p</sub>, occupying constant reservoir volume:</p>
+<div class="fx">G·B<sub>gi</sub> = (G − G<sub>p</sub>)·B<sub>g</sub> &nbsp;&nbsp;with&nbsp; B<sub>g</sub> ∝ z/p &nbsp;⇒</div>
+<div class="fx"><span class="lbl">The p/z equation</span><span class="frac"><span>p</span><span>z</span></span> = <span class="frac"><span>p<sub>i</sub></span><span>z<sub>i</sub></span></span>( 1 − <span class="frac"><span>G<sub>p</sub></span><span>G</span></span> )</div>
+<p><b>p/z vs G<sub>p</sub> is a straight line.</b> Its x-intercept is G (OGIP); dropping a horizontal at the abandonment p/z reads recoverable reserves directly. This is why gas engineers guard the p/z plot like a treasure: two or three good shut-in pressure surveys and the whole future of the field is on one page.</p>
+<div class="lab" data-widget="pz"><div class="lh"><span class="dot"></span><b>Lab · p/z Extrapolator</b></div>
+<div class="body"><p style="font-size:13.5px;color:var(--dim);margin:0">Edit the survey data (cumulative production vs measured p/z). The lab fits a least-squares line, extrapolates OGIP, and computes reserves to your abandonment p/z.</p>
+<div class="ctrl" data-rows></div>
+<div class="ctrl"><label>Abandonment p/z (psia)<input type="number" value="800" step="50" data-in="pzab"></label></div>
+<canvas width="720" height="380"></canvas>
+<div class="readout">
+<div class="chip"><span>OGIP G (x-intercept)</span><b data-out="g"></b></div>
+<div class="chip"><span>Reserves to abandonment</span><b data-out="res"></b></div>
+<div class="chip"><span>Recovery factor</span><b data-out="rf"></b></div>
+</div>
+</div></div>
+<div class="callout oil"><div class="ct">Why z matters</div><p>Plot raw p instead of p/z and the “line” bends — early points extrapolate to the wrong G by 10–30%. The z-factor straightens real-gas behaviour into a ruler. Never extrapolate a two-point p/z line drawn too early in field life; give the trend at least ~10–20% depletion before trusting it.</p></div>
+`},
+{title:"Water-drive and abnormally pressured gas reservoirs", type:"read", html:`
+<h3>When the line lies</h3>
+<p><b>Water drive:</b> influx W<sub>e</sub> shrinks the gas volume, propping pressure up. The MBE becomes:</p>
+<div class="fx"><span class="frac"><span>p</span><span>z</span></span> = <span class="frac"><span>p<sub>i</sub></span><span>z<sub>i</sub></span></span> · <span class="frac"><span>1 − G<sub>p</sub>/G</span><span>1 − W<sub>e</sub>/(G·B<sub>gi</sub>) + W<sub>p</sub>B<sub>w</sub>/(G·B<sub>gi</sub>)</span></span></div>
+<p>The p/z plot flattens or curves <em>concave-up</em>; naive extrapolation <b>overestimates G</b>. Worse, water invasion traps gas behind the front at high pressure (residual gas saturation ≈ 30–40% of pore volume), so water-drive gas reservoirs often recover <em>less</em> (50–70%) than depletion ones (80–90%) — a famous inversion of intuition. Diagnostics: the Cole plot, F/E<sub>t</sub> vs G<sub>p</sub> — flat for depletion, rising for water drive.</p>
+<h3>Abnormally pressured (geopressured) reservoirs</h3>
+<p>In strongly overpressured reservoirs, pore compaction and water expansion contribute meaningful early energy. The p/z plot shows <b>two slopes</b>: a shallow early slope (rock+water energy helping) breaking to a steeper late slope (gas expansion alone). Extrapolating the early slope can overestimate G by 30–100%. Roach/Ramagost–Farshad corrected plots — p/z·[1 − (c<sub>f</sub>+c<sub>w</sub>S<sub>w</sub>)Δp/(1−S<sub>w</sub>)] vs G<sub>p</sub> — restore linearity.</p>
+<div class="example"><div class="xh">Worked example — reading a p/z line</div><div class="xb">
+<p>Surveys: (G<sub>p</sub>=0, p/z=4,600), (G<sub>p</sub>=120 Bscf, p/z=3,930), (G<sub>p</sub>=250 Bscf, p/z=3,180). Abandonment p/z = 750 psia.</p>
+<details class="step"><summary>Step 1 — slope and intercept</summary><div class="sb">Slope ≈ (3,180−4,600)/250 = −5.68 psia/Bscf. Intercept 4,600. x-intercept G = 4,600/5.68 = <b>≈ 810 Bscf</b>.</div></details>
+<details class="step"><summary>Step 2 — reserves</summary><div class="sb">G<sub>p,ab</sub> = G(1 − 750/4,600) = 810×0.837 = <b>≈ 678 Bscf</b>; RF ≈ 84%.</div></details>
+</div></div>
+`},
+{title:"Checkpoint · Module 8", type:"quiz", quiz:[
+{q:"On a p/z vs Gp plot for a volumetric gas reservoir, OGIP is…",opts:["The slope","The y-intercept","The x-intercept","The area under the line"],a:2,why:"At p/z = 0 all gas would be produced: the x-intercept is G."},
+{q:"A water-drive gas reservoir's p/z plot typically…",opts:["Steeper than depletion","Flattens, overestimating G if extrapolated","Passes through the origin","Is unaffected"],a:1,why:"Pressure support props up p/z; the naive straight-line extrapolation lands beyond the true G."},
+{q:"Water-drive gas reservoirs often recover LESS than depletion-drive ones because…",opts:["Water corrodes tubing","Gas is trapped at high pressure behind the advancing water","z-factors are lower","Wells water out instantly"],a:1,why:"Residual gas trapped at high pressure contains many more moles than gas abandoned at low depletion pressure."},
+{q:"An abnormally pressured gas reservoir shows a p/z plot with…",opts:["One perfect line","Two slopes — shallow early, steeper late","Negative slope reversal","Scatter only"],a:1,why:"Early rock/water compressibility energy flattens the initial trend; once spent, pure gas expansion steepens it."},
+{q:"If (p/z)i = 5,200 and current p/z = 3,900 after Gp = 200 Bscf, G ≈…",opts:["400 Bscf","800 Bscf","1,000 Bscf","1,600 Bscf"],a:1,why:"Gp/G = 1 − 3900/5200 = 0.25 → G = 200/0.25 = 800 Bscf."}
+]}
+]});
+
+COURSE.push({
+id:"m9", num:"09", title:"Water Influx", depth:"2,750 – 2,950 m",
+tag:"Dynamics",
+blurb:"Modelling the aquifer: Schilthuis and Hurst steady-state models, van Everdingen–Hurst unsteady state, and Fetkovich's pseudo-steady shortcut.",
+lessons:[
+{title:"Aquifer models I: steady state", type:"read", html:`
+<h3>The invisible partner</h3>
+<p>Most reservoirs are small blisters on vast aquifers. As reservoir pressure falls, the aquifer water expands and intrudes: <span class="keyterm">water influx W<sub>e</sub></span>. We never see the aquifer directly — we choose a mathematical model and fit its parameters until the material balance behaves.</p>
+<h3>Schilthuis steady state (1936)</h3>
+<p>Assumes the aquifer is so large and permeable that influx is proportional to the instantaneous pressure drop:</p>
+<div class="fx"><span class="frac"><span>dW<sub>e</sub></span><span>dt</span></span> = k′(p<sub>i</sub> − p) &nbsp;⇒&nbsp; W<sub>e</sub> = k′∫(p<sub>i</sub> − p)dt</div>
+<p>k′ = influx constant (bbl/d/psi), found by history matching. Valid for strong, highly conductive aquifers (or outcropping/recharged ones); otherwise it over-predicts late influx because real aquifers deplete.</p>
+<h3>Hurst modified steady state</h3>
+<p>Hurst let the effective aquifer resistance grow with time as the pressure disturbance travels outward:</p>
+<div class="fx"><span class="frac"><span>dW<sub>e</sub></span><span>dt</span></span> = <span class="frac"><span>c′(p<sub>i</sub> − p)</span><span>log(a t)</span></span></div>
+<p>Two fit constants (c′, a) give it more flexibility, but it is fundamentally a patch. The honest treatment of time-dependence is van Everdingen–Hurst.</p>
+`},
+{title:"Aquifer models II: van Everdingen–Hurst & Fetkovich", type:"read", html:`
+<h3>van Everdingen–Hurst (unsteady state, 1949)</h3>
+<p>Solve the radial diffusivity equation for the aquifer with a constant-pressure inner boundary. Results come as a dimensionless influx function W<sub>eD</sub>(t<sub>D</sub>, r<sub>eD</sub>) — tabulated/charted — where:</p>
+<div class="fx">t<sub>D</sub> = <span class="frac"><span>6.328×10<sup>−3</sup> k t</span><span>φ μ<sub>w</sub> c<sub>t</sub> r<sub>o</sub>²</span></span> &nbsp;(t in days),&nbsp;&nbsp; r<sub>eD</sub> = r<sub>aquifer</sub>/r<sub>o</sub></div>
+<div class="fx"><span class="lbl">Influx for one pressure step Δp</span>W<sub>e</sub> = U · Δp · W<sub>eD</sub>(t<sub>D</sub>),&nbsp;&nbsp; U = 1.119 φ c<sub>t</sub> r<sub>o</sub>² h f &nbsp;(bbl/psi)</div>
+<div class="vars"><b>U</b> aquifer constant · <b>r<sub>o</sub></b> reservoir radius · <b>f</b> = encroachment angle/360° for partial peripheries.</div>
+<p>Real pressure histories are handled by <span class="keyterm">superposition</span>: decompose the boundary pressure into a staircase of steps Δp<sub>j</sub> (each Δp<sub>j</sub> = (p<sub>j−1</sub> − p<sub>j+1</sub>)/2 convention), and sum:</p>
+<div class="fx">W<sub>e</sub>(t<sub>n</sub>) = U Σ<sub>j</sub> Δp<sub>j</sub> · W<sub>eD</sub>(t<sub>Dn</sub> − t<sub>Dj</sub>)</div>
+<h3>Fetkovich (1971) — the engineer's shortcut</h3>
+<p>Treat the finite aquifer like a well on pseudo-steady-state decline: it has a starting inventory and a productivity index J:</p>
+<div class="fx">W<sub>ei</sub> = c<sub>t</sub> W<sub>i</sub> p<sub>i</sub> &nbsp;(maximum encroachable water)<br>
+ΔW<sub>e,n</sub> = <span class="frac"><span>W<sub>ei</sub></span><span>p<sub>i</sub></span></span>( p̄<sub>a,n−1</sub> − p̄<sub>R,n</sub> )( 1 − e<sup>−J p<sub>i</sub> Δt / W<sub>ei</sub></sup> )</div>
+<p>where the average aquifer pressure is updated each step: p̄<sub>a</sub> = p<sub>i</sub>(1 − W<sub>e</sub>/W<sub>ei</sub>). No superposition, no tables — which is why simulators and spreadsheets love it. <b>Carter–Tracy</b> is a related step-wise approximation of vEH that also avoids full superposition.</p>
+<div class="callout"><div class="ct">Fitting strategy</div><p>Aquifer parameters are never known a priori. Assume a model → compute W<sub>e</sub>(t) → insert into F/E<sub>t</sub> = N + W<sub>e</sub>/E<sub>t</sub> → demand a straight line of slope 1. Curved? Adjust aquifer size/strength and repeat. Aquifer fitting is disciplined trial-and-error, and non-uniqueness is real: several aquifer/N pairs may fit — keep monitoring and updating.</p></div>
+`},
+{title:"Checkpoint · Module 9", type:"quiz", quiz:[
+{q:"The Schilthuis model assumes influx rate proportional to…",opts:["Time","(pi − p), the total pressure drop","Gp","Aquifer radius"],a:1,why:"Steady state: dWe/dt = k′(pi − p) — appropriate only for very strong aquifers."},
+{q:"van Everdingen–Hurst solves…",opts:["Darcy's law in linear form","The radial diffusivity equation with constant inner pressure","Bernoulli's equation","The material balance directly"],a:1,why:"It is the rigorous unsteady-state solution, delivered as dimensionless WeD(tD, reD) tables."},
+{q:"Superposition is needed in vEH because…",opts:["The aquifer is infinite","Boundary pressure changes continuously, not in one step","z varies","Water is compressible"],a:1,why:"The linear diffusivity equation lets us sum the responses of many small pressure steps."},
+{q:"In Fetkovich's model, Wei = ct·Wi·pi represents…",opts:["Aquifer productivity index","Maximum water the aquifer can ever deliver","Initial influx rate","Encroachment angle"],a:1,why:"Expanding the total aquifer water by full depressurisation gives the encroachable maximum."},
+{q:"An aquifer model is judged adequate when…",opts:["WeD tables are interpolated smoothly","F/Et vs We/Et forms a straight line (slope 1, intercept N)","p/z is curved","It predicts We = 0"],a:1,why:"The Havlena–Odeh diagnostic: only the correct influx history linearises the material balance."}
+]}
+]});
+</script>
+<script>
+/* =================== MODULES 10–12 =================== */
+COURSE.push({
+id:"m10", num:"10", title:"Fluid Flow in Porous Media", depth:"2,950 – 3,150 m",
+tag:"Dynamics",
+blurb:"The diffusivity equation, the three flow regimes, radial flow solutions, skin, and superposition — the physics under every well test.",
+lessons:[
+{title:"The diffusivity equation & flow regimes", type:"read", html:`
+<h3>Three laws, one equation</h3>
+<p>Combine (1) conservation of mass, (2) Darcy's law, and (3) an equation of state for a slightly compressible fluid, and radial flow obeys the <span class="keyterm">diffusivity equation</span>:</p>
+<div class="fx"><span class="frac"><span>∂²p</span><span>∂r²</span></span> + <span class="frac"><span>1</span><span>r</span></span><span class="frac"><span>∂p</span><span>∂r</span></span> = <span class="frac"><span>φ μ c<sub>t</sub></span><span>0.0002637 k</span></span> · <span class="frac"><span>∂p</span><span>∂t</span></span> &nbsp;&nbsp;(field units, t in hours)</div>
+<p>The group η = 0.0002637k/(φμc<sub>t</sub>) is the <span class="keyterm">hydraulic diffusivity</span> — how fast pressure disturbances travel. Pressure diffuses like heat: it does not “arrive” at a boundary, it fades in.</p>
+<h3>The three regimes every test passes through</h3>
+<ul>
+<li><b>Transient (infinite-acting):</b> the pressure wave hasn't yet felt any boundary. ∂p/∂t depends on position. All classic well-test analysis lives here.</li>
+<li><b>Pseudo-steady state (PSS):</b> a closed boundary has been felt everywhere; pressure everywhere falls at the same constant rate, dp/dt = constant. Decline analysis (Module 13) lives here.</li>
+<li><b>Steady state:</b> a constant-pressure boundary (strong aquifer, balanced injection) makes ∂p/∂t = 0.</li>
+</ul>
+<p>Time to reach PSS (radius of investigation reaching r<sub>e</sub>):</p>
+<div class="fx">r<sub>inv</sub> ≈ √(k t / (948 φ μ c<sub>t</sub>)) &nbsp;(ft, t in hr) ;&nbsp;&nbsp; t<sub>pss</sub> ≈ 948 φ μ c<sub>t</sub> r<sub>e</sub>²/k &nbsp;hr</div>
+`},
+{title:"Radial flow solutions, skin & superposition", type:"read", html:`
+<h3>The line-source (Ei) solution — transient flow</h3>
+<p>A well produced at constant rate q in an infinite reservoir:</p>
+<div class="fx">p(r,t) = p<sub>i</sub> + <span class="frac"><span>70.6 q μ B</span><span>k h</span></span> · Ei( <span class="frac"><span>−948 φ μ c<sub>t</sub> r²</span><span>k t</span></span> )</div>
+<p>For x &lt; 0.01 (i.e. at the wellbore after a short time), Ei(−x) ≈ ln(1.781x), giving the working equation of well testing:</p>
+<div class="fx"><span class="lbl">Wellbore flowing pressure, transient</span>p<sub>wf</sub> = p<sub>i</sub> − <span class="frac"><span>162.6 q μ B</span><span>k h</span></span>[ log t + log<span class="frac"><span>k</span><span>φ μ c<sub>t</sub> r<sub>w</sub>²</span></span> − 3.23 + 0.87s ]</div>
+<h3>Skin — the toll booth at the wellbore</h3>
+<p>Drilling-mud invasion, perforation crush, partial penetration — or acid jobs and fractures — alter permeability in a thin annulus around the well. The <span class="keyterm">skin factor s</span> lumps this into an extra steady pressure drop:</p>
+<div class="fx">Δp<sub>skin</sub> = <span class="frac"><span>141.2 q μ B</span><span>k h</span></span> · s ;&nbsp;&nbsp; s = ( <span class="frac"><span>k</span><span>k<sub>s</sub></span></span> − 1 ) ln<span class="frac"><span>r<sub>s</sub></span><span>r<sub>w</sub></span></span></div>
+<p>s &gt; 0 damaged (s = +5 to +20 common), s = 0 unaltered, s &lt; 0 stimulated (acid ≈ −1 to −3; fracture ≈ −3 to −6). Flow efficiency FE = (p̄−p<sub>wf</sub>−Δp<sub>skin</sub>)/(p̄−p<sub>wf</sub>). The PSS inflow equation, used constantly for deliverability:</p>
+<div class="fx"><span class="lbl">Pseudo-steady-state inflow</span>q = <span class="frac"><span>0.00708 k h (p̄ − p<sub>wf</sub>)</span><span>μ B [ ln(r<sub>e</sub>/r<sub>w</sub>) − 0.75 + s ]</span></span></div>
+<h3>Superposition — many wells, many rates</h3>
+<p>The diffusivity equation is linear, so solutions add. <b>In space:</b> the pressure drop at any point = sum of drops caused by each well. A no-flow fault is modelled by an <em>image well</em> mirrored across it. <b>In time:</b> a rate change from q₁ to q₂ at t₁ = original well at q₁ forever + a phantom well at (q₂−q₁) starting at t₁. This trick converts every messy rate history into a sum of clean constant-rate solutions — and is the mathematical engine behind buildup analysis (Module 11).</p>
+<div class="lab" data-widget="radial"><div class="lh"><span class="dot"></span><b>Lab · Pressure Funnel Visualiser</b></div>
+<div class="body"><div class="ctrl">
+<label>Permeability k <b data-out="k"></b> md<input type="range" min="5" max="500" step="5" value="100" data-in="k"></label>
+<label>Skin s <b data-out="s"></b><input type="range" min="-5" max="20" step="0.5" value="5" data-in="s"></label>
+<label>Rate q <b data-out="q"></b> stb/d<input type="range" min="100" max="3000" step="50" value="800" data-in="q"></label>
+</div>
+<canvas width="720" height="380"></canvas>
+<div class="readout"><div class="chip"><span>p<sub>wf</sub></span><b data-out="pwf"></b></div><div class="chip"><span>Δp across skin</span><b data-out="dps"></b></div><div class="chip"><span>Flow efficiency</span><b data-out="fe"></b></div></div>
+<p style="font-size:12.5px;color:var(--dim);margin:0">The logarithmic “funnel”: most drawdown happens near the well, and skin adds a vertical cliff right at r<sub>w</sub>. Slide s negative and watch a stimulation job pay for itself.</p>
+</div></div>
+`},
+{title:"Checkpoint · Module 10", type:"quiz", quiz:[
+{q:"During pseudo-steady state in a closed reservoir…",opts:["Pressure is constant everywhere","dp/dt is the same constant everywhere","Pressure varies randomly","Only pwf declines"],a:1,why:"Once the boundary is felt, the whole tank depletes in unison — dp/dt = −qB/(ct·Vp)."},
+{q:"The diffusivity η = k/(φμct) controls…",opts:["Ultimate recovery","How fast pressure disturbances propagate","Skin factor","Bubble point"],a:1,why:"High k, low storage (φct) or low μ lets pressure signals travel quickly — like thermal diffusivity for heat."},
+{q:"A skin factor of s = +8 means…",opts:["Enhanced near-well permeability","Significant formation damage adding extra Δp at the wellbore","Fractured well","Zero drawdown"],a:1,why:"Positive skin is a damage toll; the extra Δp = 141.2qμB·s/kh can dominate total drawdown."},
+{q:"A sealing fault near a well is modelled by…",opts:["Doubling skin","An image well mirrored across the fault","Halving k","Ignoring it"],a:1,why:"Superposition in space: the image well's interference reproduces the no-flow condition at the fault plane."},
+{q:"The radius of investigation grows with…",opts:["√(kt/φμct)","t²","1/t","It doesn't grow"],a:0,why:"Diffusive propagation: rinv ∝ √(ηt) — quadrupling test time only doubles the investigated radius."},
+{q:"In the PSS inflow equation the term −0.75 (i.e. ln(re/rw) − 3/4) arises from…",opts:["Skin","Using average reservoir pressure p̄ instead of pe","Gas slippage","Unit conversion"],a:1,why:"Volumetric averaging of the pressure profile replaces ln(re/rw) − 1/2 (pe form) with −3/4 for p̄."}
+]}
+]});
+
+COURSE.push({
+id:"m11", num:"11", title:"Well Test Analysis", depth:"3,150 – 3,300 m",
+tag:"Dynamics",
+blurb:"Drawdown and buildup tests: extracting permeability, skin and average pressure from a pressure gauge and a stopwatch.",
+lessons:[
+{title:"Drawdown tests", type:"read", html:`
+<h3>The idea</h3>
+<p>Flow a (previously static) well at constant rate and record p<sub>wf</sub>(t). The transient solution says p<sub>wf</sub> is linear in <b>log t</b>:</p>
+<div class="fx">p<sub>wf</sub> = p<sub>i</sub> − m·log t − m[ log(k/(φμc<sub>t</sub>r<sub>w</sub>²)) − 3.23 + 0.87s ],&nbsp;&nbsp; m = <span class="frac"><span>162.6 q μ B</span><span>k h</span></span></div>
+<p>So on semilog paper:</p>
+<ul>
+<li><b>Slope m (psi/cycle)</b> → permeability: <b>k = 162.6qμB/(mh)</b>.</li>
+<li><b>p<sub>1hr</sub></b> (read on the straight line at t=1 hr) → skin:</li>
+</ul>
+<div class="fx">s = 1.151[ <span class="frac"><span>p<sub>i</sub> − p<sub>1hr</sub></span><span>m</span></span> − log<span class="frac"><span>k</span><span>φ μ c<sub>t</sub> r<sub>w</sub>²</span></span> + 3.23 ]</div>
+<p><b>Early times are corrupted by wellbore storage</b> (the wellbore itself unloading fluid) — identified on a log-log plot of Δp vs t as a unit-slope line. The semilog straight line begins only after storage dies (rule of thumb: after ~1.5 log cycles from the end of the unit slope). Late times bend away as boundaries arrive. A <b>reservoir-limit test</b> exploits the late PSS data: dp/dt = constant gives connected pore volume V<sub>p</sub> = −0.234qB/(c<sub>t</sub>·dp/dt).</p>
+`},
+{title:"Buildup tests & the Horner plot", type:"read", html:`
+<h3>Shut it in and let it speak</h3>
+<p>Flow at rate q for time t<sub>p</sub>, then shut in and record the rising p<sub>ws</sub>(Δt). By superposition in time (well at +q since t=0, image at −q since t<sub>p</sub>):</p>
+<div class="fx"><span class="lbl">Horner equation</span>p<sub>ws</sub> = p<sub>i</sub> − m · log<span class="frac"><span>t<sub>p</sub> + Δt</span><span>Δt</span></span>,&nbsp;&nbsp; m = <span class="frac"><span>162.6 q μ B</span><span>k h</span></span></div>
+<p>Plot p<sub>ws</sub> vs the <span class="keyterm">Horner time ratio</span> (t<sub>p</sub>+Δt)/Δt on semilog axes (time runs right-to-left):</p>
+<ul>
+<li><b>Slope m</b> → k, exactly as in drawdown.</li>
+<li><b>Extrapolate to ratio = 1</b> (infinite shut-in) → <b>p*</b>, ≈ p<sub>i</sub> for new wells; corrected to average pressure p̄ (MBH method) in developed reservoirs.</li>
+<li><b>Skin</b> from p<sub>1hr</sub> on the straight line: s = 1.151[(p<sub>1hr</sub> − p<sub>wf,Δt=0</sub>)/m − log(k/(φμc<sub>t</sub>r<sub>w</sub>²)) + 3.23].</li>
+</ul>
+<p>Buildups are beloved because rate is exactly known (zero!) — no flow-metering noise. The <b>MDH plot</b> (p<sub>ws</sub> vs log Δt) is the short-producing-time simplification. Modern analysis adds the <b>pressure-derivative</b> log-log diagnostic: radial flow appears as a flat derivative plateau, storage as an early hump, boundaries as late-time rises — a fingerprint chart of the reservoir.</p>
+<div class="lab" data-widget="horner"><div class="lh"><span class="dot"></span><b>Lab · Horner Analyst</b></div>
+<div class="body"><div class="ctrl">
+<label>True k <b data-out="k"></b> md<input type="range" min="10" max="400" step="5" value="80" data-in="k"></label>
+<label>True skin <b data-out="s"></b><input type="range" min="-3" max="15" step="0.5" value="4" data-in="s"></label>
+<label>Producing time t<sub>p</sub> <b data-out="tp"></b> hr<input type="range" min="24" max="720" step="24" value="240" data-in="tp"></label>
+</div>
+<canvas width="720" height="380"></canvas>
+<div class="readout"><div class="chip"><span>Slope m</span><b data-out="m"></b></div><div class="chip"><span>k from slope</span><b data-out="kcalc"></b></div><div class="chip"><span>p* (extrapolated)</span><b data-out="pstar"></b></div></div>
+<p style="font-size:12.5px;color:var(--dim);margin:0">Synthetic buildup data (q=500 stb/d, μ=1.2 cp, B=1.25, h=35 ft, p<sub>i</sub>=4,000 psia). The fitted semilog line recovers k from m = 162.6qμB/kh — verify the round trip.</p>
+</div></div>
+`},
+{title:"Checkpoint · Module 11", type:"quiz", quiz:[
+{q:"On a semilog drawdown plot, permeability comes from…",opts:["The intercept","The slope m via k = 162.6qμB/(mh)","The curvature","p at 10 hr"],a:1,why:"The transient solution is linear in log t with slope inversely proportional to kh."},
+{q:"Early-time buildup/drawdown data deviate from the straight line because of…",opts:["Boundaries","Wellbore storage and skin","Gas cap","Water influx"],a:1,why:"The wellbore itself stores/unloads fluid; a unit slope on log-log Δp–t flags this period."},
+{q:"The Horner time ratio at infinite shut-in equals…",opts:["0","1","tp","∞"],a:1,why:"As Δt→∞, (tp+Δt)/Δt → 1 — extrapolating the line there gives p*."},
+{q:"A well test gives m = 50 psi/cycle with q=500 stb/d, μ=1.2 cp, B=1.25, h=30 ft. k ≈…",opts:["8 md","41 md","81 md","162 md"],a:2,why:"k = 162.6×500×1.2×1.25/(50×30) = 121,950/1,500 ≈ 81 md."},
+{q:"On a pressure-derivative log-log plot, infinite-acting radial flow appears as…",opts:["A unit-slope line","A flat (horizontal) derivative plateau","A vertical asymptote","A sinusoid"],a:1,why:"The derivative of the semilog straight line is constant — the plateau whose level gives kh."}
+]}
+]});
+
+COURSE.push({
+id:"m12", num:"12", title:"Well Deliverability & Inflow Performance", depth:"3,300 – 3,450 m",
+tag:"Production",
+blurb:"PI, Vogel and Fetkovich IPRs, gas deliverability, and matching the reservoir's offer against the tubing's demand (nodal analysis).",
+lessons:[
+{title:"Productivity index & Vogel's IPR", type:"read", html:`
+<h3>The straight-line PI — valid above bubble point</h3>
+<div class="fx">J = <span class="frac"><span>q<sub>o</sub></span><span>p̄ − p<sub>wf</sub></span></span> &nbsp;stb/d/psi &nbsp;=&nbsp; <span class="frac"><span>0.00708 k<sub>o</sub> h</span><span>μ<sub>o</sub> B<sub>o</sub>[ln(r<sub>e</sub>/r<sub>w</sub>) − 0.75 + s]</span></span></div>
+<p>The <span class="keyterm">inflow performance relationship (IPR)</span> is the full q vs p<sub>wf</sub> curve. Above p<sub>b</sub> it is a straight line of slope −1/J with absolute open flow (AOF) at p<sub>wf</sub>=0.</p>
+<h3>Below the bubble point: Vogel</h3>
+<p>Free gas near the wellbore cuts k<sub>ro</sub>, so each extra psi of drawdown buys less oil. Vogel's dimensionless curve (1968), fitted to simulations of many solution-gas-drive reservoirs:</p>
+<div class="fx"><span class="frac"><span>q<sub>o</sub></span><span>q<sub>o,max</sub></span></span> = 1 − 0.2<span class="frac"><span>p<sub>wf</sub></span><span>p̄</span></span> − 0.8( <span class="frac"><span>p<sub>wf</sub></span><span>p̄</span></span> )²</div>
+<p>For undersaturated reservoirs with p<sub>wf</sub> dipping below p<sub>b</sub>, use the <b>composite IPR</b>: straight-line PI down to p<sub>b</sub>, Vogel curvature beneath (q<sub>b</sub> = J(p̄−p<sub>b</sub>); q<sub>max</sub> = q<sub>b</sub> + Jp<sub>b</sub>/1.8). <b>Fetkovich's</b> alternative fits well tests with q = C(p̄²−p<sub>wf</sub>²)<sup>n</sup>. Future IPRs shrink as p̄ and k<sub>ro</sub> decline — Standing's and Fetkovich's adjustments scale q<sub>max</sub> accordingly.</p>
+<div class="lab" data-widget="vogel"><div class="lh"><span class="dot"></span><b>Lab · IPR Builder (composite PI + Vogel)</b></div>
+<div class="body"><div class="ctrl">
+<label>Average pressure p̄ <b data-out="pr"></b> psia<input type="range" min="1500" max="5000" step="50" value="3200" data-in="pr"></label>
+<label>Bubble point p<sub>b</sub> <b data-out="pb"></b> psia<input type="range" min="500" max="4500" step="50" value="2400" data-in="pb"></label>
+<label>PI J <b data-out="j"></b> stb/d/psi<input type="range" min="0.2" max="5" step="0.1" value="1.2" data-in="j"></label>
+<label>Target p<sub>wf</sub> <b data-out="pwf"></b> psia<input type="range" min="0" max="4500" step="50" value="1500" data-in="pwf"></label>
+</div>
+<canvas width="720" height="400"></canvas>
+<div class="readout"><div class="chip"><span>Rate at target p<sub>wf</sub></span><b data-out="q"></b></div><div class="chip"><span>q at bubble point</span><b data-out="qb"></b></div><div class="chip"><span>AOF q<sub>max</sub></span><b data-out="qmax"></b></div></div>
+<p style="font-size:12.5px;color:var(--dim);margin:0">Slide p<sub>b</sub> above p̄ and the whole curve goes Vogel; slide it to zero and you recover the straight-line PI. The kink is the bubble point walking through your drawdown.</p>
+</div></div>
+`},
+{title:"Gas deliverability & nodal analysis", type:"read", html:`
+<h3>Gas wells: back-pressure and LIT equations</h3>
+<p>The classic four-point flow-after-flow test fits the <b>Rawlins–Schellhardt back-pressure equation</b>:</p>
+<div class="fx">q<sub>g</sub> = C( p̄² − p<sub>wf</sub>² )<sup>n</sup>,&nbsp;&nbsp; 0.5 ≤ n ≤ 1.0</div>
+<p>n=1 laminar, n→0.5 fully turbulent. Plot log(p̄²−p<sub>wf</sub>²) vs log q<sub>g</sub>: slope = 1/n; AOF read at p<sub>wf</sub>=14.7 psia. The theoretically grounded alternative is the <b>laminar–inertial–turbulent (LIT)</b> / Forchheimer form:</p>
+<div class="fx">p̄² − p<sub>wf</sub>² = a q<sub>g</sub> + b q<sub>g</sub>² &nbsp;&nbsp;(a: Darcy flow, b: non-Darcy turbulence)</div>
+<p>At high pressures (&gt;~3,000 psia) use pseudo-pressure m(p) = 2∫p/(μz)dp instead of p² for accuracy — the m(p) form is exact at all pressure levels.</p>
+<h3>Nodal analysis — where offer meets demand</h3>
+<p>The reservoir <em>offers</em> the IPR: more rate at lower p<sub>wf</sub>. The tubing <em>demands</em> the VLP/TPR (vertical lift performance): more rate needs more bottomhole pressure to carry friction and the fluid column — the multiphase-flow territory of Brill &amp; Mukherjee, with flow patterns (bubble, slug, churn, annular), holdup and friction correlations (Hagedorn–Brown, Beggs–Brill). Plot both curves on the same q–p<sub>wf</sub> axes:</p>
+<div class="callout oil"><div class="ct">The operating point</div><p>The intersection of IPR and VLP is the natural flowing rate. No intersection? The well is dead — bring artificial lift (gas lift, ESP) or bigger tubing. Every production-engineering decision — tubing size, choke, compression, stimulation — is a deliberate reshaping of one of these two curves to move their intersection to a better place.</p></div>
+`},
+{title:"Checkpoint · Module 12", type:"quiz", quiz:[
+{q:"Vogel's IPR curves below the bubble point because…",opts:["Water breaks through","Free gas reduces oil relative permeability near the wellbore","Tubing friction rises","Skin increases with rate"],a:1,why:"Below pb, liberated gas occupies pores and slashes kro — each psi of extra drawdown yields less incremental oil."},
+{q:"With p̄=3,000 psia, qmax=2,000 stb/d, Vogel gives q at pwf=1,500 psia ≈…",opts:["700 stb/d","1,000 stb/d","1,400 stb/d","1,800 stb/d"],a:2,why:"pwf/p̄=0.5 → q/qmax = 1−0.2(0.5)−0.8(0.25) = 0.70 → q = 1,400 stb/d."},
+{q:"In the back-pressure equation, n = 0.5 indicates…",opts:["Laminar Darcy flow","Fully turbulent (non-Darcy) flow","Measurement error","Water coning"],a:1,why:"The exponent falls from 1 (laminar) toward 0.5 as inertial/turbulent effects grow — common in high-rate gas wells."},
+{q:"The natural flowing rate of a well is found where…",opts:["IPR crosses the VLP/tubing curve","IPR crosses the x-axis","VLP is at minimum","pwf = p̄"],a:0,why:"Reservoir offer = tubing demand: the nodal operating point."},
+{q:"A composite IPR is needed when…",opts:["p̄ and pwf are both above pb","p̄ > pb but drawdown takes pwf below pb","The well is gas only","Skin is zero"],a:1,why:"Straight-line PI applies down to pb; Vogel curvature takes over beneath it."}
+]}
+]});
+</script>
+<script>
+/* =================== MODULES 13–15 =================== */
+COURSE.push({
+id:"m13", num:"13", title:"Decline Curve Analysis", depth:"3,450 – 3,550 m",
+tag:"Production",
+blurb:"Arps' exponential, hyperbolic and harmonic declines: reading the future of a well from its production history.",
+lessons:[
+{title:"The Arps family", type:"read", html:`
+<h3>One parameter to rule them: b</h3>
+<p>Arps (1945) observed that the <span class="keyterm">loss ratio</span> and its derivative organise nearly all boundary-dominated declines. Define decline rate D = −(dq/dt)/q. The family:</p>
+<div class="fx"><span class="lbl">General hyperbolic (0 &lt; b &lt; 1)</span>q(t) = <span class="frac"><span>q<sub>i</sub></span><span>(1 + b D<sub>i</sub> t)<sup>1/b</sup></span></span>,&nbsp;&nbsp;N<sub>p</sub> = <span class="frac"><span>q<sub>i</sub><sup>b</sup></span><span>D<sub>i</sub>(1−b)</span></span>( q<sub>i</sub><sup>1−b</sup> − q<sup>1−b</sup> )</div>
+<div class="fx"><span class="lbl">Exponential (b = 0) — constant D</span>q = q<sub>i</sub>e<sup>−Dt</sup>,&nbsp;&nbsp; N<sub>p</sub> = <span class="frac"><span>q<sub>i</sub> − q</span><span>D</span></span></div>
+<div class="fx"><span class="lbl">Harmonic (b = 1)</span>q = <span class="frac"><span>q<sub>i</sub></span><span>1 + D<sub>i</sub>t</span></span>,&nbsp;&nbsp; N<sub>p</sub> = <span class="frac"><span>q<sub>i</sub></span><span>D<sub>i</sub></span></span> ln<span class="frac"><span>q<sub>i</sub></span><span>q</span></span></div>
+<p>Diagnostics: exponential is a straight line on <b>log q vs t</b>; harmonic on <b>log q vs N<sub>p</sub></b>; exponential also straight on <b>q vs N<sub>p</sub></b>. Physical anchors: single-phase PSS depletion → b≈0; solution-gas drive → b≈0.1–0.4; layered no-crossflow and some water drives → b≈0.5–1. <b>b &gt; 1 is transient flow masquerading as decline</b> (ubiquitous in tight/unconventional wells) — extrapolating it gives fantasy EURs; switch to a terminal exponential decline (modified hyperbolic).</p>
+<div class="lab" data-widget="decline"><div class="lh"><span class="dot"></span><b>Lab · Decline Simulator &amp; EUR Machine</b></div>
+<div class="body"><div class="ctrl">
+<label>q<sub>i</sub> <b data-out="qi"></b> stb/d<input type="range" min="200" max="5000" step="100" value="1500" data-in="qi"></label>
+<label>D<sub>i</sub> <b data-out="di"></b> %/yr<input type="range" min="5" max="90" step="1" value="35" data-in="di"></label>
+<label>b-factor <b data-out="b"></b><input type="range" min="0" max="1.4" step="0.05" value="0.4" data-in="b"></label>
+<label>Economic limit <b data-out="ql"></b> stb/d<input type="range" min="10" max="300" step="10" value="50" data-in="ql"></label>
+</div>
+<canvas width="720" height="400"></canvas>
+<div class="readout"><div class="chip"><span>Life to limit</span><b data-out="life"></b></div><div class="chip"><span>EUR (to limit)</span><b data-out="eur"></b></div></div>
+<p style="font-size:12.5px;color:var(--dim);margin:0">Semilog rate–time plot. b=0 is a straight line; push b past 1 and watch the tail — and the EUR — inflate suspiciously. That fat tail is where unconventional reserves debates live.</p>
+</div></div>
+`},
+{title:"Using DCA honestly", type:"read", html:`
+<h3>The fine print</h3>
+<p>Arps assumes: (1) boundary-dominated flow has begun, (2) constant operating conditions (choke, lift, pressure), (3) no changes in drainage or damage. Violate any of these and the fit forecasts the past, not the future. Discipline:</p>
+<ul>
+<li><b>Never fit transient data.</b> Early-life data (before t<sub>pss</sub>) always looks hyperbolic with large b.</li>
+<li><b>Rate changes reset the clock.</b> A workover, choke change, or lift install creates a new decline segment.</li>
+<li><b>Fit rate vs cumulative when time data is patchy</b> — q vs N<sub>p</sub> is robust to downtime.</li>
+<li><b>Cross-check EUR</b> against volumetrics × RF and material balance. Three independent methods that agree are worth more than one perfect fit.</li>
+</ul>
+<div class="example"><div class="xh">Worked example — exponential well</div><div class="xb">
+<p>A well declines exponentially from 900 stb/d at a nominal D = 24%/yr. Economic limit 45 stb/d. Find remaining life and EUR.</p>
+<details class="step"><summary>Step 1 — life</summary><div class="sb">t = ln(qi/ql)/D = ln(20)/0.24 = 3.00/0.24 = <b>12.5 years</b>.</div></details>
+<details class="step"><summary>Step 2 — EUR</summary><div class="sb">Np = (qi−ql)/D = (900−45)×365/0.24 = <b>≈ 1.30 MMstb</b>. (Converting D to per-day, 0.24/365, and rates in stb/d gives the same result — keep units honest.)</div></details>
+</div></div>
+<div class="callout"><div class="ct">Nominal vs effective decline</div><p>Nominal D is the instantaneous exponential rate (continuous compounding); effective decline d is the year-on-year fractional drop: d = 1 − e<sup>−D</sup> for exponential. Contracts and databases mix them freely — always ask which one a number is.</p></div>
+`},
+{title:"Checkpoint · Module 13", type:"quiz", quiz:[
+{q:"On semilog rate–time paper, an exponential decline plots as…",opts:["A hyperbola","A straight line","A parabola","A step function"],a:1,why:"log q = log qi − Dt/2.303 — linear in t."},
+{q:"A harmonic decline (b=1) plots straight on…",opts:["q vs t","log q vs Np","q vs √t","p/z vs Gp"],a:1,why:"Np = (qi/Di)ln(qi/q) rearranges to log q linear in Np."},
+{q:"A tight-gas well fits b = 1.6 over its first year. You should…",opts:["Book the hyperbolic EUR proudly","Recognise transient flow and cap the forecast with a terminal exponential","Set b = 0 immediately","Double Di"],a:1,why:"b>1 during transient flow is not sustainable; modified hyperbolic (switch to exponential at a limiting decline) prevents runaway EURs."},
+{q:"For b = 0, EUR to economic limit ql is…",opts:["(qi−ql)/D","qi/D·ln(qi/ql)","qi·ql·D","Cannot compute"],a:0,why:"Exponential cumulative: Np = (qi − q)/D."},
+{q:"DCA fundamentally requires…",opts:["Transient flow","Boundary-dominated flow under constant operating conditions","A gas cap","Water injection"],a:1,why:"Arps declines are empirical descriptions of boundary-dominated depletion; changed conditions break the extrapolation."}
+]}
+]});
+
+COURSE.push({
+id:"m14", num:"14", title:"Waterflooding & Performance Prediction", depth:"3,550 – 3,650 m",
+tag:"Production",
+blurb:"Fractional flow, Buckley–Leverett frontal advance, Welge's tangent, mobility ratio — and the classic depletion predictors (Tarner, Muskat, Tracy).",
+lessons:[
+{title:"Fractional flow & Buckley–Leverett", type:"read", html:`
+<h3>What fraction of the stream is water?</h3>
+<p>For 1-D horizontal displacement, ignoring capillary gradients, the water cut at any point depends only on saturation via the rel-perm curves:</p>
+<div class="fx"><span class="lbl">Fractional flow of water</span>f<sub>w</sub> = <span class="frac"><span>1</span><span>1 + <span class="frac"><span>k<sub>ro</sub></span><span>μ<sub>o</sub></span></span> · <span class="frac"><span>μ<sub>w</sub></span><span>k<sub>rw</sub></span></span></span></span></div>
+<p>The S-shaped f<sub>w</sub>(S<sub>w</sub>) curve is the DNA of the flood. Its steepness is governed by the <span class="keyterm">mobility ratio</span>:</p>
+<div class="fx">M = <span class="frac"><span>k<sub>rw</sub>°/μ<sub>w</sub></span><span>k<sub>ro</sub>°/μ<sub>o</sub></span></span> &nbsp;&nbsp;— M ≤ 1 favourable (piston-like), M ≫ 1 unfavourable (fingering, early breakthrough)</div>
+<h3>Buckley–Leverett frontal advance (1942)</h3>
+<p>Mass conservation says each saturation value travels at a speed proportional to the slope of f<sub>w</sub> at that saturation:</p>
+<div class="fx"><span class="lbl">Frontal advance equation</span>( <span class="frac"><span>dx</span><span>dt</span></span> )<sub>S<sub>w</sub></sub> = <span class="frac"><span>5.615 q<sub>t</sub></span><span>φ A</span></span> · ( <span class="frac"><span>df<sub>w</sub></span><span>dS<sub>w</sub></span></span> )<sub>S<sub>w</sub></sub></div>
+<p>Because f<sub>w</sub> is S-shaped, mid saturations would outrun low ones — a physical impossibility resolved by a <span class="keyterm">shock front</span>. <b>Welge's tangent construction</b> finds it: draw the tangent to f<sub>w</sub> from (S<sub>wc</sub>, 0). The tangency point gives the front saturation S<sub>wf</sub> and its water cut; the tangent's intersection with f<sub>w</sub>=1 reads the average saturation behind the front S̄<sub>w</sub>, hence recovery at breakthrough:</p>
+<div class="fx">RF<sub>bt</sub> = <span class="frac"><span>S̄<sub>w</sub> − S<sub>wc</sub></span><span>1 − S<sub>wc</sub></span></span> &nbsp;(of movable-adjusted pore volume basis as defined)</div>
+<p>After breakthrough, successive tangents at higher S<sub>w</sub> track the rising water cut and continuing (slower) recovery.</p>
+<div class="lab" data-widget="bl"><div class="lh"><span class="dot"></span><b>Lab · Buckley–Leverett Flood Simulator</b></div>
+<div class="body"><div class="ctrl">
+<label>Oil viscosity μ<sub>o</sub> <b data-out="muo"></b> cp<input type="range" min="0.5" max="20" step="0.5" value="4" data-in="muo"></label>
+<label>Water viscosity μ<sub>w</sub> <b data-out="muw"></b> cp<input type="range" min="0.3" max="1.2" step="0.05" value="0.5" data-in="muw"></label>
+<label>S<sub>wc</sub> <b data-out="swc"></b><input type="range" min="0.1" max="0.35" step="0.01" value="0.2" data-in="swc"></label>
+<label>S<sub>or</sub> <b data-out="sor"></b><input type="range" min="0.15" max="0.4" step="0.01" value="0.25" data-in="sor"></label>
+</div>
+<canvas width="720" height="400"></canvas>
+<div class="readout"><div class="chip"><span>Mobility ratio M</span><b data-out="m"></b></div><div class="chip"><span>Front saturation S<sub>wf</sub></span><b data-out="swf"></b></div><div class="chip"><span>Water cut at breakthrough</span><b data-out="fwf"></b></div><div class="chip"><span>Recovery at breakthrough</span><b data-out="rf"></b></div></div>
+<p style="font-size:12.5px;color:var(--dim);margin:0">The tangent line is Welge's construction, drawn live. Crank μ<sub>o</sub> up to 20 cp: the tangent point slides down, breakthrough comes early and wet — you are watching an unfavourable mobility ratio ruin a flood, and why polymer (thickening water) is the antidote.</p>
+</div></div>
+`},
+{title:"Predicting depletion performance: Tarner, Muskat, Tracy", type:"read", html:`
+<h3>Forecasting a solution-gas-drive reservoir</h3>
+<p>Below the bubble point, MB alone has two unknowns per pressure step (N<sub>p</sub>, G<sub>p</sub>). Pair it with the <span class="keyterm">instantaneous GOR equation</span> — a statement about flow, not volume:</p>
+<div class="fx">R = R<sub>s</sub> + <span class="frac"><span>k<sub>g</sub></span><span>k<sub>o</sub></span></span> · <span class="frac"><span>μ<sub>o</sub>B<sub>o</sub></span><span>μ<sub>g</sub>B<sub>g</sub></span></span></div>
+<p>and a saturation equation to enter the k<sub>g</sub>/k<sub>o</sub> curve:</p>
+<div class="fx">S<sub>o</sub> = (1 − S<sub>wc</sub>)(1 − <span class="frac"><span>N<sub>p</sub></span><span>N</span></span>)<span class="frac"><span>B<sub>o</sub></span><span>B<sub>oi</sub></span></span></div>
+<p>The three classic iteration schemes, all marching pressure downward in steps:</p>
+<ul>
+<li><b>Tarner:</b> guess ΔN<sub>p</sub> for the step → compute G<sub>p</sub> from MB and, separately, from the GOR equation (trapezoidal average of R) → adjust ΔN<sub>p</sub> until both agree.</li>
+<li><b>Muskat:</b> differential form — express dS<sub>o</sub>/dp analytically from MB + GOR and integrate numerically; elegant, sensitive to PVT-derivative accuracy.</li>
+<li><b>Tracy:</b> reorganises MB with pressure-dependent functions Φ<sub>n</sub>, Φ<sub>g</sub> (and Φ<sub>w</sub>) so each step solves 1 = Φ<sub>n</sub>ΔN<sub>p</sub>-style relations quickly — the favourite for hand and spreadsheet work.</li>
+</ul>
+<p>Output: N<sub>p</sub>, G<sub>p</sub>, R and S<sub>o</sub> versus pressure — the primary-recovery forecast, and the baseline against which waterflood or gas-injection projects are justified. (Full-field, multi-well, heterogeneous forecasting is the job of numerical reservoir simulation — conceptually just this workflow solved on thousands of connected tanks.)</p>
+<div class="callout oil"><div class="ct">History matching</div><p>Before any model forecasts, it must reproduce the past: adjust the least-known parameters (aquifer size, rel-perm curves, compartment volumes) within plausible ranges until computed pressures/GOR/water cut track the measured history. A matched model is not necessarily <em>right</em> — matches are non-unique — but an unmatched model is certainly wrong.</p></div>
+`},
+{title:"Checkpoint · Module 14", type:"quiz", quiz:[
+{q:"The fractional flow of water increases when…",opts:["μo decreases","kro increases","μo increases (heavier oil)","Swc increases at fixed Sw"],a:2,why:"fw = 1/(1 + (kro·μw)/(krw·μo)) — heavier oil (higher μo) makes the denominator smaller, so fw rises: water preferentially flows."},
+{q:"In Welge's construction, the tangent from (Swc, 0) to the fw curve gives…",opts:["Residual oil","The shock-front saturation and breakthrough water cut","Bubble point","Aquifer size"],a:1,why:"Tangency point = Swf and fw at the front; the tangent extended to fw=1 reads the average Sw behind the front."},
+{q:"A mobility ratio M = 5 implies…",opts:["Piston-like displacement","Water fingers ahead — early breakthrough, poor sweep","Oil moves faster than water","No displacement at all"],a:1,why:"M>1 means water is more mobile than oil; instability and channelling degrade sweep efficiency."},
+{q:"The instantaneous GOR equation adds to material balance the information about…",opts:["Rock volume","Relative flow of free gas vs oil (kg/ko)","Aquifer influx","Skin"],a:1,why:"R = Rs + (kg/ko)(μoBo/μgBg) couples fluid flow to volumetric depletion, closing the prediction system."},
+{q:"Tracy's method is essentially…",opts:["A graphical p/z tool","Material balance reorganised with pressure-dependent Φ functions for fast stepwise solution","A decline curve","An aquifer model"],a:1,why:"Tracy tabulates Φn, Φg once per pressure and iterates each step rapidly — the classic spreadsheet predictor."}
+]}
+]});
+
+COURSE.push({
+id:"m15", num:"15", title:"The Proving Ground — Integrated Field Problems", depth:"3,650 m · TD",
+tag:"Capstone",
+blurb:"Four multi-step field problems that chain modules together the way real assets do. Attempt each on paper before opening the solution steps.",
+lessons:[
+{title:"Problem 1 · Appraising the Okoro discovery", type:"read", html:`
+<h3>Scenario</h3>
+<p>An exploration well finds oil. RFT points: <b>gas leg</b> 2,912 psia @ 6,200 ft (G<sub>g</sub>=0.08 psi/ft); <b>oil leg</b> 3,060 psia @ 6,700 ft (G<sub>o</sub>=0.33); <b>water leg</b> 3,305 psia @ 7,150 ft (G<sub>w</sub>=0.465). Mapping gives oil-column area 2,600 ac (use net pay = oil column × NTG 0.75), φ=0.24, S<sub>wi</sub>=0.22, B<sub>oi</sub>=1.36.</p>
+<p><b>Tasks:</b> (a) locate GOC and OWC; (b) oil column thickness; (c) OOIP; (d) reserves at RF=0.34.</p>
+<details class="step"><summary>Solution (a) — contacts</summary><div class="sb">Gas line: p = 2912 + 0.08(D−6200). Oil line: p = 3060 + 0.33(D−6700). Equate: 2912+0.08D−496 = 3060+0.33D−2211 → 2416+0.08D = 849+0.33D → 0.25D = 1567 → <b>GOC = 6,268 ft</b>.<br>Oil vs water: 3060+0.33(D−6700) = 3305+0.465(D−7150) → 849+0.33D = −19.75+0.465D → 0.135D = 868.75 → <b>OWC = 6,435 ft</b>.</div></details>
+<details class="step"><summary>Solution (b) — column</summary><div class="sb">Oil column = 6,435 − 6,268 = <b>167 ft</b> gross → net pay h = 167×0.75 ≈ 125 ft.</div></details>
+<details class="step"><summary>Solution (c) — OOIP</summary><div class="sb">N = 7758×2600×125×0.24×(1−0.22)/1.36 = 7758×2600×125×0.24×0.78/1.36 ≈ <b>347 MMstb</b>.</div></details>
+<details class="step"><summary>Solution (d) — reserves</summary><div class="sb">Reserves = 347×0.34 ≈ <b>118 MMstb</b>. Next appraisal priorities: confirm NTG and contacts on the flanks (largest sensitivities), sample PVT before depletion.</div></details>
+`},
+{title:"Problem 2 · How big is the gas field really?", type:"read", html:`
+<h3>Scenario</h3>
+<p>A gas reservoir (T=210°F, γ<sub>g</sub>=0.68) has surveys:</p>
+<table class="data"><tr><th>G<sub>p</sub> (Bscf)</th><th>p (psia)</th><th>z</th></tr>
+<tr><td>0</td><td>4,850</td><td>0.982</td></tr><tr><td>150</td><td>4,275</td><td>0.943</td></tr><tr><td>310</td><td>3,680</td><td>0.910</td></tr><tr><td>480</td><td>3,020</td><td>0.883</td></tr></table>
+<p><b>Tasks:</b> (a) OGIP by p/z; (b) reserves at abandonment p/z = 850 psia; (c) after these surveys, later points start plotting <em>above</em> the established line — diagnose and state the risk.</p>
+<details class="step"><summary>Solution (a) — p/z line</summary><div class="sb">p/z values: 4,939 · 4,533 · 4,044 · 3,420. Regressing vs Gp: slope ≈ −(4939−3420)/480 = −3.165 psia/Bscf; intercept ≈ 4,939. <b>G = 4939/3.165 ≈ 1,560 Bscf</b>.</div></details>
+<details class="step"><summary>Solution (b) — reserves</summary><div class="sb">G<sub>p,ab</sub> = G(1 − 850/4939) = 1560×0.828 ≈ <b>1,292 Bscf</b> (RF ≈ 83%).</div></details>
+<details class="step"><summary>Solution (c) — the bend</summary><div class="sb">Points rising above the line = pressure support = <b>water influx</b>. Risks: OGIP from the early line is an over-estimate of recoverable volume behaviour — water-drive gas recovery may fall to 50–70% because gas is trapped at high pressure behind the flood front; wells will also water out. Actions: Cole/Havlena–Odeh diagnostics, fit an aquifer model (Module 9), consider accelerating offtake (blowdown) to outrun the water.</div></details>
+`},
+{title:"Problem 3 · The damaged well", type:"read", html:`
+<h3>Scenario</h3>
+<p>A new oil well (q=650 stb/d, μ=1.1 cp, B=1.28, h=42 ft, φ=0.21, c<sub>t</sub>=9×10⁻⁶ psi⁻¹, r<sub>w</sub>=0.354 ft, p<sub>wf</sub> at shut-in = 2,470 psia) is shut in for a buildup after t<sub>p</sub>=360 hr. The Horner straight line has slope m = 62 psi/cycle, p<sub>1hr</sub> = 3,065 psia and extrapolates to p* = 3,610 psia.</p>
+<p><b>Tasks:</b> (a) k; (b) skin; (c) Δp<sub>skin</sub> and flow efficiency; (d) is stimulation worth it if removing skin roughly doubles J?</p>
+<details class="step"><summary>Solution (a) — permeability</summary><div class="sb">k = 162.6qμB/(mh) = 162.6×650×1.1×1.28/(62×42) = 148,824/2,604 ≈ <b>57 md</b>.</div></details>
+<details class="step"><summary>Solution (b) — skin</summary><div class="sb">s = 1.151[(p<sub>1hr</sub>−p<sub>wf,0</sub>)/m − log(k/(φμc<sub>t</sub>r<sub>w</sub>²)) + 3.23]<br>k/(φμc<sub>t</sub>r<sub>w</sub>²) = 57/(0.21×1.1×9e-6×0.1253) = 57/(2.605e-7) = 2.19e8 → log = 8.34.<br>s = 1.151[(3065−2470)/62 − 8.34 + 3.23] = 1.151[9.597 − 5.11] = 1.151×4.487 ≈ <b>+5.2</b> — damaged.</div></details>
+<details class="step"><summary>Solution (c) — skin cost</summary><div class="sb">Δp<sub>skin</sub> = 141.2qμB·s/(kh) = 141.2×650×1.1×1.28×5.2/(57×42) = 671,900/2,394 ≈ <b>281 psi</b>. Ideal drawdown = (p*−p<sub>wf</sub>) − Δp<sub>skin</sub> = 1,140−281 = 859 psi. FE ≈ 859/1,140 ≈ <b>0.75</b> — a quarter of the drawdown is wasted crossing damage.</div></details>
+<details class="step"><summary>Solution (d) — decision</summary><div class="sb">Removing s → q rises roughly by 1/FE ≈ 33% at the same drawdown (≈ +215 stb/d). At any realistic oil price this pays for a matrix acid job within weeks. Recommend stimulation, then re-test to confirm s ≈ 0.</div></details>
+`},
+{title:"Problem 4 · Designing the waterflood", type:"read", html:`
+<h3>Scenario</h3>
+<p>A depleting solution-gas-drive reservoir (N = 120 MMstb, current RF only 11%) is screened for waterflood. Rel perms: S<sub>wc</sub>=0.22, S<sub>or</sub>=0.28, k<sub>rw</sub>°=0.32, k<sub>ro</sub>°=0.85, n<sub>w</sub>=2.6, n<sub>o</sub>=2.0. Fluids: μ<sub>o</sub>=3.2 cp, μ<sub>w</sub>=0.55 cp.</p>
+<p><b>Tasks:</b> (a) mobility ratio — is the flood stable? (b) using Welge (the Module-14 lab reproduces this), S<sub>wf</sub>≈0.52, f<sub>wf</sub>≈0.78, S̄<sub>w</sub>≈0.60 — displacement efficiency at breakthrough; (c) incremental recovery estimate if areal×vertical sweep ≈ 0.65; (d) two design levers if M had been unfavourable.</p>
+<details class="step"><summary>Solution (a) — M</summary><div class="sb">M = (k<sub>rw</sub>°/μ<sub>w</sub>)/(k<sub>ro</sub>°/μ<sub>o</sub>) = (0.32/0.55)/(0.85/3.2) = 0.582/0.266 ≈ <b>2.2</b>. Mildly unfavourable — workable, expect some early water and imperfect sweep.</div></details>
+<details class="step"><summary>Solution (b) — displacement efficiency</summary><div class="sb">E<sub>D,bt</sub> = (S̄<sub>w</sub> − S<sub>wc</sub>)/(1 − S<sub>wc</sub>) = (0.60−0.22)/0.78 ≈ <b>0.49</b> of the oil in the swept zone displaced at breakthrough; continued injection after breakthrough pushes S̄<sub>w</sub> toward 1−S<sub>or</sub>=0.72, i.e. E<sub>D,ult</sub> → (0.72−0.22)/0.78 ≈ 0.64.</div></details>
+<details class="step"><summary>Solution (c) — recovery</summary><div class="sb">Ultimate flood RF ≈ E<sub>D</sub>×E<sub>vol</sub> = 0.64×0.65 ≈ 0.42 of OOIP in the flooded region. Incremental over the 11% primary ≈ 0.42−0.11 ≈ 30% × 120 MMstb ≈ <b>~36 MMstb incremental</b> — before economics, pattern design and timing refine it. (Order-of-magnitude screening, exactly how real projects start.)</div></details>
+<details class="step"><summary>Solution (d) — levers</summary><div class="sb">1) <b>Polymer</b> in the injection water raises μ<sub>w</sub>, cutting M toward 1 (chemical EOR's entry move). 2) <b>Pattern & rate design</b> — closer spacing, balanced voidage-replacement, and injecting below fracture pressure improve sweep; in dipping reservoirs, inject down-dip and let gravity help.</div></details>
+<div class="callout oil"><div class="ct">You have reached total depth</div><p>Volumetrics told you what's there; material balance told you what's connected; flow physics told you how fast; declines and displacement theory told you the future. That is the whole discipline in one drilling run. Go back up the column and replay any lab — mastery is when the sliders stop surprising you.</p></div>
+`}
+]});
+</script>
+<script>
+/* =================== ENGINE =================== */
+const $ = s => document.querySelector(s);
+const main = $("#main");
+let store = { done:{}, scores:{} };
+try{ const raw = localStorage.getItem("strata-progress"); if(raw) store = JSON.parse(raw); }catch(e){}
+function save(){ try{ localStorage.setItem("strata-progress", JSON.stringify(store)); }catch(e){} }
+
+const totalLessons = COURSE.reduce((s,m)=>s+m.lessons.length,0);
+function doneCount(){ return Object.keys(store.done).length; }
+function modProgress(m){ const d = m.lessons.filter((_,i)=>store.done[m.id+":"+i]).length; return d/m.lessons.length; }
+
+let state = { view:"home", mi:0, li:0 };
+
+function esc(s){return s;}
+function renderSidebar(){
+  const list = $("#navList"); list.innerHTML = "";
+  COURSE.forEach((m,mi)=>{
+    const p = modProgress(m);
+    const b = document.createElement("button");
+    b.className = "stratum" + (p>=1?" done":"") + (state.view!=="home"&&state.mi===mi?" current":"");
+    b.innerHTML = '<span class="pipe"><span class="node"></span></span><span class="layer">'+
+      '<span class="lt">'+m.num+' · '+m.title+'</span>'+
+      '<span class="ld"><span>'+m.depth+'</span><span class="pct">'+Math.round(p*100)+'%</span></span></span>';
+    b.onclick = ()=>{ go("module", mi); closeMenu(); };
+    list.appendChild(b);
+  });
+  const pct = doneCount()/totalLessons;
+  const depth = Math.round(3650*pct);
+  $("#drillDepth").innerHTML = "Drill bit at <b>"+depth.toLocaleString()+" m</b> of 3,650 m · "+doneCount()+"/"+totalLessons+" lessons";
+  $("#pctTxt").textContent = Math.round(pct*100)+"%";
+  $("#pctBar").style.width = (pct*100)+"%";
+}
+
+function go(view, mi, li){
+  state = { view, mi:mi||0, li:li||0 };
+  renderSidebar();
+  if(view==="home") renderHome();
+  else if(view==="module") renderModule(mi);
+  else renderLesson(mi, li);
+  window.scrollTo({top:0});
+  main.focus({preventScroll:true});
+}
+
+function renderHome(){
+  let cards = COURSE.map((m,mi)=>{
+    const p = Math.round(modProgress(m)*100);
+    return '<div class="card" onclick="go(\'module\','+mi+')" tabindex="0" role="button">'+
+      '<div class="k"><span>MODULE '+m.num+'</span><span>'+m.depth+'</span></div>'+
+      '<h3>'+m.title+'</h3><p>'+m.blurb+'</p>'+
+      '<div class="meter"><i style="width:'+p+'%"></i></div></div>';
+  }).join("");
+  const pct = Math.round(doneCount()/totalLessons*100);
+  main.innerHTML = '<div class="hero"><h1>Drill through the discipline, one stratum at a time.</h1>'+
+   '<p>A complete interactive academy built on <em>Reservoir Engineering: Fundamentals and Applications</em> (Okotie &amp; Ikporo), reinforced with Dake, Craft &amp; Hawkins, and Brill &amp; Mukherjee. Fifteen modules, ten live laboratories, seventy checkpoint questions, four integrated field problems. Every formula derived, every concept made touchable.</p>'+
+   '<div class="cta"><button class="btn primary" onclick="go(\'lesson\',0,0)">'+(pct>0?"Continue drilling":"Spud the well — start Module 01")+'</button>'+
+   '<button class="btn" onclick="go(\'module\',14)">Skip to the Proving Ground</button></div></div>'+
+   '<div class="crumb">The column · <span>'+pct+'% drilled</span></div>'+
+   '<div class="grid">'+cards+'</div>';
+}
+
+function renderModule(mi){
+  const m = COURSE[mi];
+  const rows = m.lessons.map((l,li)=>{
+    const done = store.done[m.id+":"+li];
+    const tag = l.type==="quiz" ? '<span class="tag quiz">Checkpoint</span>' : (l.html && l.html.indexOf("data-widget")>-1 ? '<span class="tag lab">Lesson + Lab</span>' : '<span class="tag">Lesson</span>');
+    return '<div class="lrow" onclick="go(\'lesson\','+mi+','+li+')" tabindex="0" role="button">'+
+      '<span class="idx">'+m.num+'.'+(li+1)+'</span><span class="t">'+l.title+'</span>'+tag+
+      '<span class="tick">'+(done?"✓":"")+'</span></div>';
+  }).join("");
+  main.innerHTML = '<div class="crumb">Module '+m.num+' · <span>'+m.depth+'</span> · '+m.tag+'</div>'+
+    '<h1 class="pagetitle">'+m.title+'</h1><p class="lede">'+m.blurb+'</p>'+
+    '<div class="lesson-list">'+rows+'</div>';
+}
+
+function renderLesson(mi, li){
+  const m = COURSE[mi], l = m.lessons[li];
+  let inner = '<div class="crumb">Module '+m.num+' · <span>'+m.title+'</span> · '+m.depth+'</div>'+
+    '<h1 class="pagetitle">'+m.num+'.'+(li+1)+' — '+l.title+'</h1>';
+  if(l.type==="quiz"){
+    inner += '<p class="lede">Answer all questions. Explanations appear after each answer — read them even when you are right.</p><div class="quiz" id="quizBox"></div><div class="quiz-score" id="quizScore"></div>';
+  } else {
+    inner += '<article class="lesson">'+l.html+'</article>';
+    inner += '<button class="btn primary done-btn" id="doneBtn">'+(store.done[m.id+":"+li]?"✓ Completed — mark again":"Mark lesson complete")+'</button>';
+  }
+  const hasPrev = li>0 || mi>0, hasNext = li<m.lessons.length-1 || mi<COURSE.length-1;
+  inner += '<div class="lesson-nav">'+
+    (hasPrev?'<button class="btn" id="prevBtn">← Previous</button>':'<span></span>')+
+    (hasNext?'<button class="btn" id="nextBtn">Next →</button>':'<button class="btn" onclick="go(\'home\')">Back to the column</button>')+'</div>';
+  main.innerHTML = inner;
+  if(l.type==="quiz") buildQuiz(m, li, l.quiz);
+  else $("#doneBtn").onclick = ()=>{ store.done[m.id+":"+li]=1; save(); renderSidebar(); $("#doneBtn").textContent="✓ Completed"; };
+  if(hasPrev) $("#prevBtn").onclick = ()=>{ if(li>0) go("lesson",mi,li-1); else go("lesson",mi-1,COURSE[mi-1].lessons.length-1); };
+  if(hasNext && $("#nextBtn")) $("#nextBtn").onclick = ()=>{ if(li<m.lessons.length-1) go("lesson",mi,li+1); else go("lesson",mi+1,0); };
+  document.querySelectorAll("[data-widget]").forEach(elm=>{
+    const w = WIDGETS[elm.getAttribute("data-widget")];
+    if(w) try{ w(elm); }catch(e){ console.error(e); }
+  });
+}
+
+function buildQuiz(m, li, qs){
+  const box = $("#quizBox");
+  let answered = 0, correct = 0;
+  qs.forEach((qq,qi)=>{
+    const qd = document.createElement("div"); qd.className="q";
+    qd.innerHTML = '<div class="qt">'+(qi+1)+'. '+qq.q+'</div>';
+    qq.opts.forEach((o,oi)=>{
+      const b = document.createElement("button"); b.className="opt"; b.textContent=o;
+      b.onclick = ()=>{
+        if(qd.classList.contains("answered")) return;
+        qd.classList.add("answered"); answered++;
+        if(oi===qq.a){ b.classList.add("correct"); correct++; }
+        else { b.classList.add("wrong"); qd.querySelectorAll(".opt")[qq.a].classList.add("correct"); }
+        if(answered===qs.length){
+          const sc = $("#quizScore");
+          sc.style.display="block";
+          const pct = Math.round(correct/qs.length*100);
+          sc.innerHTML = '<b>'+correct+' / '+qs.length+'</b> &nbsp;('+pct+'%) — '+
+            (pct===100?"Flawless. The stratum is yours.":pct>=70?"Solid. Review the misses, then drill on.":"Worth a re-read of the module before continuing — the deeper strata build on this one.");
+          store.done[m.id+":"+li]=1; store.scores[m.id]=pct; save(); renderSidebar();
+        }
+      };
+      qd.appendChild(b);
+    });
+    const w = document.createElement("div"); w.className="why"; w.textContent = qq.why; qd.appendChild(w);
+    box.appendChild(qd);
+  });
+}
+
+/* menu (mobile) */
+function closeMenu(){ $("#sidebar").classList.remove("open"); }
+$("#menuBtn").onclick = ()=> $("#sidebar").classList.toggle("open");
+
+/* =================== WIDGET TOOLKIT =================== */
+function ctl(root){
+  const ins = {}, outs = {};
+  root.querySelectorAll("[data-in]").forEach(i=>ins[i.getAttribute("data-in")]=i);
+  root.querySelectorAll("[data-out]").forEach(o=>outs[o.getAttribute("data-out")]=o);
+  return {ins, outs, v:k=>parseFloat(ins[k].value), set:(k,t)=>{ if(outs[k]) outs[k].textContent=t; }};
+}
+function canvasOf(root){
+  const c = root.querySelector("canvas");
+  const ctx = c.getContext("2d");
+  return {c, ctx, W:c.width, H:c.height};
+}
+function axes(ctx, x0,y0,x1,y1, opts){
+  ctx.strokeStyle="#24354F"; ctx.lineWidth=1; ctx.beginPath();
+  ctx.moveTo(x0,y0); ctx.lineTo(x0,y1); ctx.lineTo(x1,y1); ctx.stroke();
+  ctx.fillStyle="#9AA9BF"; ctx.font="12px ui-monospace,monospace";
+  if(opts && opts.xl) { ctx.fillText(opts.xl, (x0+x1)/2-30, y1+28); }
+  if(opts && opts.yl){ ctx.save(); ctx.translate(x0-42, (y0+y1)/2+30); ctx.rotate(-Math.PI/2); ctx.fillText(opts.yl,0,0); ctx.restore(); }
+}
+function fmt(n,d){ return Number(n.toFixed(d===undefined?1:d)).toLocaleString(); }
+
+const WIDGETS = {};
+
+/* --- M2: contact finder --- */
+WIDGETS.contacts = function(root){
+  const C = ctl(root), K = canvasOf(root);
+  function draw(){
+    const gg=C.v("gg"), go=C.v("go"), gw=C.v("gw"), po=C.v("po");
+    C.set("gg",gg.toFixed(3)); C.set("go",go.toFixed(3)); C.set("gw",gw.toFixed(3)); C.set("po",po);
+    const Dref=7000, pgRef = po - 45, DgRef = 6300;      // gas point above
+    const pwRef = 3344, DwRef = 7320;
+    // lines: p(D) = pref + G*(D - Dref)
+    const goc = ((po - go*Dref) - (pgRef - gg*DgRef)) / (gg - go);
+    const owc = ((po - go*Dref) - (pwRef - gw*DwRef)) / (gw - go);
+    C.set("goc", fmt(goc,0)+" ft"); C.set("owc", fmt(owc,0)+" ft");
+    const {ctx,W,H} = K; ctx.clearRect(0,0,W,H);
+    const Dmin=6100, Dmax=7500, Pmin=2900, Pmax=3500;
+    const X = p => 70 + (p-Pmin)/(Pmax-Pmin)*(W-100);
+    const Y = d => 30 + (d-Dmin)/(Dmax-Dmin)*(H-90);
+    axes(ctx, 70, 30, W-30, H-60, {xl:"pressure, psia", yl:"depth, ft"});
+    function line(pref,Dref2,G,color,d0,d1){
+      ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.beginPath();
+      ctx.moveTo(X(pref+G*(d0-Dref2)), Y(d0)); ctx.lineTo(X(pref+G*(d1-Dref2)), Y(d1)); ctx.stroke();
+    }
+    line(pgRef,DgRef,gg,"#8FD0B8",Dmin,goc);
+    line(po,Dref,go,"#F2A93B",goc,owc);
+    line(pwRef,DwRef,gw,"#57AECB",owc,Dmax);
+    [ [goc,"GOC"], [owc,"OWC"] ].forEach(([d,lab])=>{
+      ctx.strokeStyle="rgba(233,238,246,.35)"; ctx.setLineDash([5,5]); ctx.beginPath();
+      ctx.moveTo(70,Y(d)); ctx.lineTo(W-30,Y(d)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle="#E9EEF6"; ctx.font="12px ui-monospace,monospace";
+      ctx.fillText(lab+" "+fmt(d,0)+" ft", W-170, Y(d)-6);
+    });
+    ctx.fillStyle="#8FD0B8"; ctx.fillText("gas 0."+Math.round(gg*1000)/10, 90, 60);
+    ctx.fillStyle="#F2A93B"; ctx.fillText("oil", 90, Y((goc+owc)/2));
+    ctx.fillStyle="#57AECB"; ctx.fillText("water", 90, H-80);
+  }
+  Object.values(C.ins).forEach(i=>i.addEventListener("input",draw)); draw();
+};
+
+/* --- M3: darcy radial calculator --- */
+WIDGETS.darcy = function(root){
+  const C = ctl(root);
+  function draw(){
+    const k=C.v("k"),h=C.v("h"),pe=C.v("pe"),pwf=C.v("pwf"),mu=C.v("mu"),bo=C.v("bo"),re=C.v("re"),rw=C.v("rw");
+    const q = 0.00708*k*h*(pe-pwf)/(mu*bo*Math.log(re/rw));
+    const j = q/(pe-pwf);
+    C.set("q", fmt(q,0)+" stb/d"); C.set("j", fmt(j,2)+" stb/d/psi");
+  }
+  Object.values(C.ins).forEach(i=>i.addEventListener("input",draw)); draw();
+};
+
+/* --- M3: rel perm explorer --- */
+WIDGETS.relperm = function(root){
+  const C = ctl(root), K = canvasOf(root);
+  function draw(){
+    const swc=C.v("swc"), sor=C.v("sor"), nw=C.v("nw"), no=C.v("no"), krwe=C.v("krwe");
+    ["swc","sor","nw","no"].forEach(k=>C.set(k, C.v(k).toFixed(2)));
+    C.set("krwe", krwe.toFixed(2));
+    const {ctx,W,H}=K; ctx.clearRect(0,0,W,H);
+    const X = s => 70 + s*(W-100), Y = kr => (H-60) - kr*(H-90);
+    axes(ctx,70,30,W-30,H-60,{xl:"water saturation Sw", yl:"kr"});
+    for(let g=0;g<=1;g+=0.2){ ctx.fillStyle="#4a5a72"; ctx.font="11px ui-monospace,monospace";
+      ctx.fillText(g.toFixed(1), X(g)-8, H-42); ctx.fillText(g.toFixed(1), 44, Y(g)+4); }
+    function swn(sw){ return Math.min(1,Math.max(0,(sw-swc)/(1-swc-sor))); }
+    ctx.lineWidth=2.5;
+    ctx.strokeStyle="#57AECB"; ctx.beginPath();
+    for(let sw=0;sw<=1.001;sw+=0.005){ const y=Y(sw<=swc?0:(sw>=1-sor?krwe:krwe*Math.pow(swn(sw),nw))); const x=X(sw); sw===0?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke();
+    ctx.strokeStyle="#F2A93B"; ctx.beginPath();
+    for(let sw=0;sw<=1.001;sw+=0.005){ const y=Y(sw<=swc?1*Math.pow(1,no):(sw>=1-sor?0:0.9*Math.pow(1-swn(sw),no))); const x=X(sw); sw===0?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke();
+    ctx.setLineDash([4,4]); ctx.strokeStyle="rgba(233,238,246,.3)";
+    [[swc,"Swc"],[1-sor,"1−Sor"]].forEach(([s,l])=>{ ctx.beginPath(); ctx.moveTo(X(s),30); ctx.lineTo(X(s),H-60); ctx.stroke();
+      ctx.fillStyle="#9AA9BF"; ctx.fillText(l, X(s)-14, 24); });
+    ctx.setLineDash([]);
+    ctx.fillStyle="#57AECB"; ctx.fillText("krw", X(0.9), Y(krwe)-8);
+    ctx.fillStyle="#F2A93B"; ctx.fillText("kro", X(0.08), Y(0.85));
+  }
+  Object.values(C.ins).forEach(i=>i.addEventListener("input",draw)); draw();
+};
+
+/* --- M4: DAK z-factor --- */
+function zDAK(ppr, tpr){
+  if(ppr<=0) return 1;
+  const A=[0,0.3265,-1.0700,-0.5339,0.01569,-0.05165,0.5475,-0.7361,0.1844,0.1056,0.6134,0.7210];
+  let z=1;
+  for(let it=0; it<80; it++){
+    const rr = 0.27*ppr/(z*tpr);
+    const t1 = A[1] + A[2]/tpr + A[3]/Math.pow(tpr,3) + A[4]/Math.pow(tpr,4) + A[5]/Math.pow(tpr,5);
+    const t2 = A[6] + A[7]/tpr + A[8]/(tpr*tpr);
+    const t3 = A[9]*(A[7]/tpr + A[8]/(tpr*tpr));
+    const t4 = A[10]/Math.pow(tpr,3)*(1+A[11]*rr*rr)*rr*rr*Math.exp(-A[11]*rr*rr);
+    const znew = 1 + t1*rr + t2*rr*rr - t3*Math.pow(rr,5) + t4;
+    z = z + 0.5*(znew - z);
+    if(Math.abs(znew-z)<1e-8) break;
+  }
+  return z;
+}
+WIDGETS.zfac = function(root){
+  const C = ctl(root), K = canvasOf(root);
+  function draw(){
+    const sg=C.v("sg"), p=C.v("p"), tf=C.v("t");
+    const T = tf+460;
+    const tpc = 169.2 + 349.5*sg - 74.0*sg*sg;
+    const ppc = 756.8 - 131.0*sg - 3.6*sg*sg;
+    const tpr = T/tpc, ppr = p/ppc;
+    const z = zDAK(ppr,tpr);
+    const bg = 0.02827*z*T/p;
+    C.set("pc", fmt(tpc,0)+" °R / "+fmt(ppc,0)+" psia");
+    C.set("pr", tpr.toFixed(2)+" / "+ppr.toFixed(2));
+    C.set("z", z.toFixed(4)); C.set("bg", bg.toFixed(5)+" ft³/scf");
+    C.set("eg", fmt(1/bg,0)+" scf/ft³");
+    const {ctx,W,H}=K; ctx.clearRect(0,0,W,H);
+    const pmax=8000;
+    const X=pp=>70+(pp/pmax)*(W-100), Y=zz=>(H-60)-(zz-0.4)/(0.9)*(H-90);
+    axes(ctx,70,30,W-30,H-60,{xl:"pressure, psia", yl:"z"});
+    for(let g=0.4;g<=1.31;g+=0.1){ ctx.fillStyle="#4a5a72"; ctx.font="11px ui-monospace,monospace"; ctx.fillText(g.toFixed(1),40,Y(g)+4); }
+    for(let pp=0;pp<=pmax;pp+=2000){ ctx.fillStyle="#4a5a72"; ctx.fillText(pp,X(pp)-12,H-42); }
+    ctx.strokeStyle="#F2A93B"; ctx.lineWidth=2.5; ctx.beginPath();
+    for(let pp=100;pp<=pmax;pp+=60){ const zz=zDAK(pp/ppc,tpr); const x=X(pp), y=Y(Math.min(1.3,Math.max(0.4,zz))); pp===100?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke();
+    ctx.strokeStyle="rgba(233,238,246,.3)"; ctx.setLineDash([4,4]); ctx.beginPath();
+    ctx.moveTo(70,Y(1)); ctx.lineTo(W-30,Y(1)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle="#E9EEF6"; ctx.beginPath(); ctx.arc(X(p),Y(Math.min(1.3,Math.max(0.4,z))),5,0,7); ctx.fill();
+    ctx.fillStyle="#9AA9BF"; ctx.fillText("z = 1 (ideal)", W-140, Y(1)-6);
+  }
+  Object.values(C.ins).forEach(i=>i.addEventListener("input",draw)); draw();
+};
+
+/* --- M6: OOIP + Monte Carlo --- */
+WIDGETS.ooip = function(root){
+  const C = ctl(root), K = canvasOf(root);
+  function tri(mode, spread){ // triangular sample around mode
+    const lo=mode*(1-spread), hi=mode*(1+spread);
+    const u=Math.random(), f=(mode-lo)/(hi-lo);
+    return u<f ? lo+Math.sqrt(u*(hi-lo)*(mode-lo)) : hi-Math.sqrt((1-u)*(hi-lo)*(hi-mode));
+  }
+  function draw(){
+    const a=C.v("a"),h=C.v("h"),phi=C.v("phi"),sw=C.v("sw"),boi=C.v("boi"),rf=C.v("rf");
+    const N = 7758*a*h*phi*(1-sw)/boi;
+    C.set("n",fmt(N/1e6,1)+" MMstb");
+    const spreads={a:0.20,h:0.15,phi:0.10,sw:0.10,boi:0.05,rf:0.25};
+    const trials=[];
+    for(let i=0;i<5000;i++){
+      const r = 7758*tri(a,spreads.a)*tri(h,spreads.h)*tri(phi,spreads.phi)*(1-tri(sw,spreads.sw))/tri(boi,spreads.boi)*tri(rf,spreads.rf);
+      trials.push(r/1e6);
+    }
+    trials.sort((x,y)=>x-y);
+    const p90=trials[Math.floor(0.10*5000)], p50=trials[2500], p10=trials[Math.floor(0.90*5000)];
+    C.set("p90",fmt(p90,1)+" MMstb"); C.set("p50",fmt(p50,1)+" MMstb"); C.set("p10",fmt(p10,1)+" MMstb");
+    const {ctx,W,H}=K; ctx.clearRect(0,0,W,H);
+    const lo=trials[0], hi=trials[4999], nb=40, bins=new Array(nb).fill(0);
+    trials.forEach(t=>{ bins[Math.min(nb-1,Math.floor((t-lo)/(hi-lo)*nb))]++; });
+    const bmax=Math.max(...bins);
+    const X=i=>60+(i/nb)*(W-90), Y=v=>(H-50)-(v/bmax)*(H-80);
+    axes(ctx,60,30,W-30,H-50,{xl:"recoverable, MMstb"});
+    bins.forEach((b,i)=>{ ctx.fillStyle="rgba(242,169,59,.55)"; ctx.fillRect(X(i),Y(b),(W-90)/nb-1,(H-50)-Y(b)); });
+    [[p90,"P90","#8FD0B8"],[p50,"P50","#E9EEF6"],[p10,"P10","#57AECB"]].forEach(([v,l,col])=>{
+      const x=60+((v-lo)/(hi-lo))*(W-90);
+      ctx.strokeStyle=col; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.moveTo(x,30); ctx.lineTo(x,H-50); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle=col; ctx.font="12px ui-monospace,monospace"; ctx.fillText(l, x-12, 24);
+    });
+    ctx.fillStyle="#4a5a72";
+    for(let g=0;g<=4;g++){ const v=lo+(hi-lo)*g/4; ctx.fillText(fmt(v,0), 60+(g/4)*(W-90)-12, H-32); }
+  }
+  Object.values(C.ins).forEach(i=>i.addEventListener("input",draw)); draw();
+};
+
+/* --- M8: p/z extrapolator --- */
+WIDGETS.pz = function(root){
+  const C0 = ctl(root), K = canvasOf(root);
+  const rowsBox = root.querySelector("[data-rows]");
+  const seed = [[0,4600],[60,4290],[120,3930],[190,3560],[250,3180]];
+  seed.forEach((r,i)=>{
+    const l1=document.createElement("label"); l1.innerHTML="G<sub>p</sub> #"+(i+1)+" (Bscf)";
+    const i1=document.createElement("input"); i1.type="number"; i1.value=r[0]; i1.step=10; l1.appendChild(i1);
+    const l2=document.createElement("label"); l2.innerHTML="p/z #"+(i+1)+" (psia)";
+    const i2=document.createElement("input"); i2.type="number"; i2.value=r[1]; i2.step=10; l2.appendChild(i2);
+    rowsBox.appendChild(l1); rowsBox.appendChild(l2);
+  });
+  const inputs = Array.from(rowsBox.querySelectorAll("input"));
+  function draw(){
+    const pts=[]; for(let i=0;i<inputs.length;i+=2){ const x=parseFloat(inputs[i].value), y=parseFloat(inputs[i+1].value); if(isFinite(x)&&isFinite(y)) pts.push([x,y]); }
+    const n=pts.length;
+    const sx=pts.reduce((s,p)=>s+p[0],0), sy=pts.reduce((s,p)=>s+p[1],0);
+    const sxx=pts.reduce((s,p)=>s+p[0]*p[0],0), sxy=pts.reduce((s,p)=>s+p[0]*p[1],0);
+    const slope=(n*sxy-sx*sy)/(n*sxx-sx*sx), icpt=(sy-slope*sx)/n;
+    const G = -icpt/slope;
+    const pzab = C0.v("pzab");
+    const res = G*(1-pzab/icpt);
+    C0.set("g", isFinite(G)?fmt(G,0)+" Bscf":"—");
+    C0.set("res", isFinite(res)?fmt(res,0)+" Bscf":"—");
+    C0.set("rf", isFinite(res)?fmt(res/G*100,0)+"%":"—");
+    const {ctx,W,H}=K; ctx.clearRect(0,0,W,H);
+    const xmax=Math.max(G*1.05, 300), ymax=Math.max(icpt*1.05, 5000);
+    const X=x=>70+x/xmax*(W-100), Y=y=>(H-60)-y/ymax*(H-90);
+    axes(ctx,70,30,W-30,H-60,{xl:"cumulative gas Gp, Bscf", yl:"p/z, psia"});
+    ctx.strokeStyle="#F2A93B"; ctx.lineWidth=2; ctx.beginPath();
+    ctx.moveTo(X(0),Y(icpt)); ctx.lineTo(X(G),Y(0)); ctx.stroke();
+    pts.forEach(p=>{ ctx.fillStyle="#E9EEF6"; ctx.beginPath(); ctx.arc(X(p[0]),Y(p[1]),5,0,7); ctx.fill(); });
+    ctx.strokeStyle="#57AECB"; ctx.setLineDash([5,4]); ctx.beginPath();
+    ctx.moveTo(X(0),Y(pzab)); ctx.lineTo(X(G*(1-pzab/icpt)),Y(pzab)); ctx.lineTo(X(G*(1-pzab/icpt)),Y(0)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle="#57AECB"; ctx.font="12px ui-monospace,monospace"; ctx.fillText("abandonment p/z", 90, Y(pzab)-8);
+    ctx.fillStyle="#F2A93B"; ctx.fillText("G = "+fmt(G,0)+" Bscf", X(G)-120, Y(0)-10);
+    ctx.fillStyle="#4a5a72";
+    for(let g=0;g<=4;g++){ ctx.fillText(fmt(xmax*g/4,0), X(xmax*g/4)-10, H-42); ctx.fillText(fmt(ymax*g/4,0), 22, Y(ymax*g/4)+4); }
+  }
+  inputs.forEach(i=>i.addEventListener("input",draw));
+  Object.values(C0.ins).forEach(i=>i.addEventListener("input",draw));
+  draw();
+};
+
+/* --- M10: radial pressure funnel --- */
+WIDGETS.radial = function(root){
+  const C = ctl(root), K = canvasOf(root);
+  function draw(){
+    const k=C.v("k"), s=C.v("s"), q=C.v("q");
+    C.set("k",k); C.set("s",s); C.set("q",q);
+    const mu=1.2,B=1.25,h=35,pe=4000,re=1500,rw=0.354;
+    const coef=141.2*q*mu*B/(k*h);
+    const pwf = pe - coef*(Math.log(re/rw)+s);
+    const dps = coef*s;
+    const ideal = pe - coef*Math.log(re/rw);
+    const fe = (pe-pwf)!==0 ? (pe-ideal)/(pe-pwf) : 1;
+    C.set("pwf", fmt(pwf,0)+" psia"); C.set("dps", fmt(dps,0)+" psi"); C.set("fe", fe.toFixed(2));
+    const {ctx,W,H}=K; ctx.clearRect(0,0,W,H);
+    const pmin=Math.min(pwf,1500), pmax=4100;
+    const X=r=>70+(Math.log10(r/rw)/Math.log10(re/rw))*(W-100);
+    const Y=p=>(H-60)-(p-pmin)/(pmax-pmin)*(H-90);
+    axes(ctx,70,30,W-30,H-60,{xl:"radius (log scale) →", yl:"pressure, psia"});
+    ctx.strokeStyle="#F2A93B"; ctx.lineWidth=2.5; ctx.beginPath();
+    for(let i=0;i<=200;i++){ const r=rw*Math.pow(re/rw,i/200); const p=pe-coef*Math.log(re/r); const x=X(r),y=Y(p); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke();
+    // skin cliff
+    ctx.strokeStyle="#E4756B"; ctx.beginPath(); ctx.moveTo(X(rw),Y(pe-coef*Math.log(re/rw))); ctx.lineTo(X(rw),Y(pwf)); ctx.stroke();
+    ctx.fillStyle="#E4756B"; ctx.font="12px ui-monospace,monospace";
+    if(Math.abs(s)>0.01) ctx.fillText("Δp skin", X(rw)+8, Y((pwf+pe-coef*Math.log(re/rw))/2));
+    ctx.fillStyle="#9AA9BF"; ctx.fillText("rw", X(rw)-6, H-42); ctx.fillText("re", X(re)-8, H-42);
+  }
+  Object.values(C.ins).forEach(i=>i.addEventListener("input",draw)); draw();
+};
+
+/* --- M11: Horner --- */
+WIDGETS.horner = function(root){
+  const C = ctl(root), K = canvasOf(root);
+  function draw(){
+    const k=C.v("k"), s=C.v("s"), tp=C.v("tp");
+    C.set("k",k); C.set("s",s); C.set("tp",tp);
+    const q=500,mu=1.2,B=1.25,h=35,pi=4000;
+    const m = 162.6*q*mu*B/(k*h);
+    // synth points
+    const dts=[0.5,1,2,4,8,16,32,64,120,240];
+    const pts = dts.map(dt=>{ const hr=(tp+dt)/dt; return [hr, pi - m*Math.log10(hr) + (Math.random()-0.5)*2]; });
+    C.set("m", fmt(m,1)+" psi/cycle");
+    C.set("kcalc", fmt(162.6*q*mu*B/(m*h),0)+" md");
+    C.set("pstar", fmt(pi,0)+" psia");
+    const {ctx,W,H}=K; ctx.clearRect(0,0,W,H);
+    const hrmax=Math.max(...pts.map(p=>p[0]));
+    const lmax=Math.log10(hrmax);
+    const pmin=pi-m*lmax-30, pmax=pi+30;
+    const X=hr=>70+(1-Math.log10(hr)/lmax)*(W-100); // time right-to-left
+    const Y=p=>(H-60)-(p-pmin)/(pmax-pmin)*(H-90);
+    axes(ctx,70,30,W-30,H-60,{xl:"Horner ratio (tp+Δt)/Δt  ← log, reversed", yl:"pws, psia"});
+    ctx.strokeStyle="#F2A93B"; ctx.lineWidth=2; ctx.beginPath();
+    ctx.moveTo(X(hrmax),Y(pi-m*lmax)); ctx.lineTo(X(1),Y(pi)); ctx.stroke();
+    pts.forEach(p=>{ ctx.fillStyle="#E9EEF6"; ctx.beginPath(); ctx.arc(X(p[0]),Y(p[1]),4.5,0,7); ctx.fill(); });
+    ctx.fillStyle="#8FD0B8"; ctx.font="12px ui-monospace,monospace";
+    ctx.fillText("p* = "+fmt(pi,0)+" @ ratio 1", X(1)-160, Y(pi)-8);
+  }
+  Object.values(C.ins).forEach(i=>i.addEventListener("input",draw)); draw();
+};
+
+/* --- M12: Vogel composite IPR --- */
+WIDGETS.vogel = function(root){
+  const C = ctl(root), K = canvasOf(root);
+  function rate(pwf, pr, pb, J){
+    if(pr<=pb){ // fully saturated: pure Vogel with qmax = J*pr/1.8
+      const qmax=J*pr/1.8, x=pwf/pr;
+      return Math.max(0,qmax*(1-0.2*x-0.8*x*x));
+    }
+    if(pwf>=pb) return J*(pr-pwf);
+    const qb=J*(pr-pb), qv=J*pb/1.8, x=pwf/pb;
+    return qb + qv*(1-0.2*x-0.8*x*x);
+  }
+  function draw(){
+    const pr=C.v("pr"), pb=C.v("pb"), J=C.v("j"), pwf=Math.min(C.v("pwf"),pr);
+    C.set("pr",pr); C.set("pb",pb); C.set("j",J.toFixed(1)); C.set("pwf",fmt(pwf,0));
+    const qmax=rate(0,pr,pb,J), q=rate(pwf,pr,pb,J), qb=pr>pb?J*(pr-pb):0;
+    C.set("q",fmt(q,0)+" stb/d"); C.set("qb",pr>pb?fmt(qb,0)+" stb/d":"— (saturated)"); C.set("qmax",fmt(qmax,0)+" stb/d");
+    const {ctx,W,H}=K; ctx.clearRect(0,0,W,H);
+    const X=qq=>70+qq/(qmax*1.08)*(W-100), Y=p=>(H-60)-p/(pr*1.05)*(H-90);
+    axes(ctx,70,30,W-30,H-60,{xl:"oil rate q, stb/d", yl:"pwf, psia"});
+    ctx.strokeStyle="#F2A93B"; ctx.lineWidth=2.5; ctx.beginPath();
+    for(let p=pr;p>=0;p-=pr/200){ const x=X(rate(p,pr,pb,J)), y=Y(p); p===pr?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke();
+    if(pr>pb){ ctx.strokeStyle="rgba(233,238,246,.3)"; ctx.setLineDash([4,4]); ctx.beginPath();
+      ctx.moveTo(70,Y(pb)); ctx.lineTo(W-30,Y(pb)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle="#9AA9BF"; ctx.font="12px ui-monospace,monospace"; ctx.fillText("bubble point", W-150, Y(pb)-6); }
+    ctx.fillStyle="#57AECB"; ctx.beginPath(); ctx.arc(X(q),Y(pwf),6,0,7); ctx.fill();
+    ctx.fillStyle="#57AECB"; ctx.fillText("operating point", X(q)+10, Y(pwf)+4);
+    ctx.fillStyle="#4a5a72";
+    for(let g=0;g<=4;g++){ ctx.fillText(fmt(qmax*1.08*g/4,0), X(qmax*1.08*g/4)-14, H-42); ctx.fillText(fmt(pr*1.05*g/4,0), 22, Y(pr*1.05*g/4)+4); }
+  }
+  Object.values(C.ins).forEach(i=>i.addEventListener("input",draw)); draw();
+};
+
+/* --- M13: decline --- */
+WIDGETS.decline = function(root){
+  const C = ctl(root), K = canvasOf(root);
+  function draw(){
+    const qi=C.v("qi"), diy=C.v("di")/100, b=C.v("b"), ql=C.v("ql");
+    C.set("qi",fmt(qi,0)); C.set("di",fmt(diy*100,0)); C.set("b",b.toFixed(2)); C.set("ql",ql);
+    const Di=diy; // per year
+    function q(t){ return b<0.001 ? qi*Math.exp(-Di*t) : qi/Math.pow(1+b*Di*t,1/b); }
+    // life
+    let life;
+    if(b<0.001) life = Math.log(qi/ql)/Di;
+    else life = (Math.pow(qi/ql,b)-1)/(b*Di);
+    // EUR (stb): rates stb/d, t years → integrate q dt *365
+    let eur;
+    if(b<0.001) eur = (qi-ql)/Di*365;
+    else if(Math.abs(b-1)<0.001) eur = qi/Di*Math.log(qi/ql)*365;
+    else eur = Math.pow(qi,b)/(Di*(1-b))*(Math.pow(qi,1-b)-Math.pow(ql,1-b))*365;
+    C.set("life", fmt(life,1)+" yr"); C.set("eur", fmt(eur/1e6,2)+" MMstb");
+    const {ctx,W,H}=K; ctx.clearRect(0,0,W,H);
+    const tmax=Math.min(Math.max(life*1.15,5),60);
+    const lqmax=Math.log10(qi*1.2), lqmin=Math.log10(Math.max(ql*0.5,5));
+    const X=t=>70+t/tmax*(W-100), Y=qq=>(H-60)-(Math.log10(qq)-lqmin)/(lqmax-lqmin)*(H-90);
+    axes(ctx,70,30,W-30,H-60,{xl:"time, years", yl:"rate, stb/d (log)"});
+    ctx.strokeStyle="#F2A93B"; ctx.lineWidth=2.5; ctx.beginPath();
+    for(let t=0;t<=tmax;t+=tmax/300){ const qq=Math.max(q(t),1); const x=X(t),y=Y(qq); t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke();
+    ctx.strokeStyle="#E4756B"; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.moveTo(70,Y(ql)); ctx.lineTo(W-30,Y(ql)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle="#E4756B"; ctx.font="12px ui-monospace,monospace"; ctx.fillText("economic limit", W-160, Y(ql)-6);
+    ctx.fillStyle="#4a5a72";
+    for(let g=0;g<=4;g++){ ctx.fillText(fmt(tmax*g/4,0), X(tmax*g/4)-6, H-42); }
+    [10,100,1000,10000].forEach(v=>{ if(Math.log10(v)>lqmin&&Math.log10(v)<lqmax){ ctx.fillText(fmt(v,0),28,Y(v)+4); }});
+  }
+  Object.values(C.ins).forEach(i=>i.addEventListener("input",draw)); draw();
+};
+
+/* --- M14: Buckley-Leverett --- */
+WIDGETS.bl = function(root){
+  const C = ctl(root), K = canvasOf(root);
+  function draw(){
+    const muo=C.v("muo"), muw=C.v("muw"), swc=C.v("swc"), sor=C.v("sor");
+    C.set("muo",muo.toFixed(1)); C.set("muw",muw.toFixed(2)); C.set("swc",swc.toFixed(2)); C.set("sor",sor.toFixed(2));
+    const krwe=0.35, kroe=0.85, nw=2.5, no=2.0;
+    function fw(sw){
+      if(sw<=swc) return 0; if(sw>=1-sor) return 1;
+      const sn=(sw-swc)/(1-swc-sor);
+      const krw=krwe*Math.pow(sn,nw), kro=kroe*Math.pow(1-sn,no);
+      return 1/(1+(kro*muw)/(krw*muo));
+    }
+    const M=(krwe/muw)/(kroe/muo);
+    // Welge tangent from (swc,0): maximize fw/(sw-swc)
+    let best=0,swf=swc+0.01;
+    for(let sw=swc+0.005;sw<1-sor;sw+=0.001){
+      const sl=fw(sw)/(sw-swc);
+      if(sl>best){best=sl;swf=sw;}
+    }
+    const fwf=fw(swf);
+    const swbar = swc + 1/best; // tangent hits fw=1 at sw = swc + 1/slope
+    const rf=(swbar-swc)/(1-swc);
+    C.set("m",M.toFixed(2)); C.set("swf",swf.toFixed(3)); C.set("fwf",(fwf*100).toFixed(0)+"%"); C.set("rf",(rf*100).toFixed(0)+"% (of OOIP basis 1−Swc)");
+    const {ctx,W,H}=K; ctx.clearRect(0,0,W,H);
+    const X=s=>70+s*(W-100), Y=f=>(H-60)-f*(H-90);
+    axes(ctx,70,30,W-30,H-60,{xl:"water saturation Sw", yl:"fw"});
+    for(let g=0;g<=1.001;g+=0.2){ ctx.fillStyle="#4a5a72"; ctx.font="11px ui-monospace,monospace";
+      ctx.fillText(g.toFixed(1), X(g)-8, H-42); ctx.fillText(g.toFixed(1), 44, Y(g)+4); }
+    ctx.strokeStyle="#57AECB"; ctx.lineWidth=2.5; ctx.beginPath();
+    for(let s=0;s<=1.001;s+=0.004){ const x=X(s),y=Y(fw(s)); s===0?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke();
+    // tangent
+    ctx.strokeStyle="#F2A93B"; ctx.lineWidth=2; ctx.setLineDash([6,4]); ctx.beginPath();
+    ctx.moveTo(X(swc),Y(0)); ctx.lineTo(X(Math.min(swbar,1)),Y(Math.min(best*(Math.min(swbar,1)-swc),1))); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle="#F2A93B"; ctx.beginPath(); ctx.arc(X(swf),Y(fwf),6,0,7); ctx.fill();
+    ctx.font="12px ui-monospace,monospace";
+    ctx.fillText("Swf, fwf (shock front)", X(swf)+10, Y(fwf)+14);
+    ctx.fillStyle="#8FD0B8"; ctx.beginPath(); ctx.arc(X(Math.min(swbar,1)),Y(1),6,0,7); ctx.fill();
+    ctx.fillText("S̄w behind front", X(Math.min(swbar,1))-90, Y(1)+18);
+  }
+  Object.values(C.ins).forEach(i=>i.addEventListener("input",draw)); draw();
+};
+
+/* boot */
+renderSidebar();
+go("home");
+</script>
+</body>
+</html>
